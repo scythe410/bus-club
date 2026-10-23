@@ -1,11 +1,8 @@
+import {spawnState} from '../shared/spawn.js';
 import {DurableObject} from 'cloudflare:workers';
 
 const MAX_MESSAGE=192*1024+4096;
-function spawnState(slot) {
-  const z=slot*18;
-  const roadX=value=>Math.sin(value*.0022)*95+Math.sin(value*.0057)*23;
-  return {x:roadX(z),y:0,z,yaw:Math.atan2(roadX(z+1)-roadX(z-1),2),speed:0};
-}
+
 function profile(input) {
   if(!input || typeof input!=='object' || Array.isArray(input))throw Error('Invalid player profile.');
   const name=String(input.name??'Driver').trim().slice(0,24)||'Driver';
@@ -59,7 +56,7 @@ export class BusRoom extends DurableObject {
     if(intent==='create') {this.sql.exec('DELETE FROM profiles');this.sql.exec('INSERT OR REPLACE INTO room(code) VALUES (?)',code);this.code=code;}
     const id=crypto.randomUUID();
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({id,intent,joined:false,state:spawnState(active.length),windowStart:Date.now(),messages:0,profileAt:0});
+    server.serializeAttachment({id,intent,joined:false,state:spawnState(active.map(ws=>ws.deserializeAttachment()?.state).filter(Boolean)),windowStart:Date.now(),messages:0,profileAt:0});
     this.send(server,{type:'connected',id});
     return new Response(null,{status:101,webSocket:client});
   }

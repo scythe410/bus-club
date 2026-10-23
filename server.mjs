@@ -1,3 +1,4 @@
+import {spawnState} from './shared/spawn.js';
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -9,11 +10,7 @@ export const MAX_IMAGE_BYTES = 192 * 1024;
 const MAX_PAYLOAD = MAX_IMAGE_BYTES + 4096;
 const ROOM_SIZE = 8;
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.glb':'model/gltf-binary'};
-function spawnState(slot) {
-  const z=slot*18;
-  const roadX=value=>Math.sin(value*.0022)*95+Math.sin(value*.0057)*23;
-  return {x:roadX(z),y:0,z,yaw:Math.atan2(roadX(z+1)-roadX(z-1),2),speed:0};
-}
+
 const DEFAULT_SKIN = {color:'#f4a261', secondary:'#fff5df', pattern:'stripe', text:'BUS CLUB', image:null};
 function validProfile(input = {}) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw Error('Invalid player profile.');
@@ -109,7 +106,7 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
             if (room.players.size>=ROOM_SIZE && !room.players.has(ws.id)) throw Error('This convoy is full (8 drivers).');
           }
           leave(ws);ws.room=room.code;
-          room.players.set(ws.id,{id:ws.id,ws,...profile,state:spawnState(room.players.size)});
+          room.players.set(ws.id,{id:ws.id,ws,...profile,state:spawnState([...room.players.values()])});
           // Reinsert when the same connection rejoins its otherwise empty room.
           rooms.set(room.code,room);publishRoom(room);return;
         }

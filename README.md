@@ -8,7 +8,9 @@ No Slow Roads code, assets, or extracted data is included.
 
 Open the game, customize a bus, and select **Let's take a drive**. Use **Invite friends**
 to create a room. Send **Copy invite link** to friends; the link joins the same convoy.
-Everyone then starts their own bus. Rooms exist while at least one participant remains.
+Everyone then starts their own bus. Friends spawn side by side near the current convoy,
+including when the first driver has already left the starting area.
+Rooms exist while at least one participant remains.
 
 WASD/arrows drive; S/down brakes, then reverses. Space brakes, C cycles cameras,
 R returns to the road, H honks when sound is enabled, and Escape opens the garage.
@@ -34,6 +36,7 @@ Production builds use same-origin WebSockets on Cloudflare. Override
 ```sh
 npm test
 node tests/live-smoke.mjs
+node tests/live-spawn.mjs
 # Optional custom endpoint:
 node tests/live-smoke.mjs wss://example.com/ws
 ```

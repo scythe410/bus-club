@@ -18,12 +18,15 @@ test('three real clients share state and customized skins, including late joiner
  try {
   const image='data:image/png;base64,aGVsbG8=';
   a.send({type:'create',profile:profile('A',image)});const room=await a.wait('room');
-  b.send({type:'join',code:room.code,profile:profile('B')});await b.wait('room',m=>m.players.length===2);
+  b.send({type:'join',code:room.code,profile:profile('B')});const two=await b.wait('room',m=>m.players.length===2);
+  const initialHost=two.players.find(p=>p.name==='A'),initialFriend=two.players.find(p=>p.name==='B');
+  assert.ok(Math.hypot(initialHost.x-initialFriend.x,initialHost.z-initialFriend.z)<10);
   a.send({type:'state',state:{x:42,z:100,yaw:1.5,speed:12}});
+  await b.wait('snapshot',m=>m.players.some(p=>p.id===room.selfId&&p.x===42));
   c.send({type:'join',code:room.code,profile:profile('C')});const joined=await c.wait('room',m=>m.players.length===3);
   assert.equal(joined.players.find(p=>p.name==='A').skin.image,image);
-  assert.equal(joined.players.find(p=>p.name==='B').z,18);
-  assert.equal(joined.players.find(p=>p.name==='C').z,36);
+  const leader=joined.players.find(p=>p.name==='A'),late=joined.players.find(p=>p.name==='C');
+  assert.ok(Math.hypot(leader.x-late.x,leader.z-late.z)<35,'Late joiner follows the current convoy position');
   const snapshot=await c.wait('snapshot',m=>m.players.some(p=>p.id===room.selfId&&p.x===42));
   assert.equal(snapshot.players.find(p=>p.id===room.selfId).speed,12);
   b.send({type:'profile',profile:profile('Updated')});await c.wait('room',m=>m.players.some(p=>p.name==='Updated'));
@@ -47,7 +50,7 @@ test('missing rooms, malformed input, invalid positions and oversized skins do n
   p.send({type:'create',profile:profile('Valid')});const room=await p.wait('room');
   p.send({type:'state',state:{x:'unsafe',z:0,yaw:0,speed:0}});await p.wait('error',m=>/position/.test(m.message));
   p.send({type:'profile',profile:profile('Large','data:image/png;base64,'+'A'.repeat(196609))});await p.wait('error',m=>/192 KB/.test(m.message));
-  assert.equal(app.rooms.get(room.code).players.get(room.selfId).state.x,0);
+  assert.equal(app.rooms.get(room.code).players.get(room.selfId).state.x,room.players.find(p=>p.id===room.selfId).x);
   const response=await fetch(base.replace('ws:','http:').replace('/ws','/health'));assert.equal((await response.json()).ok,true);
  } finally {p.ws.terminate();await delay(30);}
 });
