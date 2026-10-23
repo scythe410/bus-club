@@ -4,7 +4,7 @@ import {createUI} from './ui.js';
 import {RoomClient} from './network.js';
 import {BusAudio} from './audio.js';
 
-let game,network,ui,driving=false,paused=false,sound=false,profileTimer;
+let game,network,ui,driving=false,paused=false,sound=false,profileTimer,spawnedId=null;
 const audio=new BusAudio();
 const input={left:false,right:false,throttle:false,brake:false};
 const toast=message=>ui?.toast(message);
@@ -51,6 +51,8 @@ ui=createUI({
 network=new RoomClient({
   onRoom:room=>{
     ui.room(room?{...room,players:room.players.map(p=>({...p,isSelf:p.id===room.selfId})),connected:true,inviteUrl:network.getInviteURL()}:{});
+    if(room&&room.selfId!==spawnedId){const self=room.players.find(p=>p.id===room.selfId);if(self)game?.setState(self);spawnedId=room.selfId;}
+    if(!room)spawnedId=null;
     if(room){const url=new URL(location.href);url.searchParams.set('room',room.code);history.replaceState(null,'',url);}
   },
   onPeers:peers=>game?.setPeers(peers),

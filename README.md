@@ -26,7 +26,7 @@ npm run dev    # Vite :5173; /ws proxies to :8787
 ```
 
 `npm run build` generates `dist/`. Local `npm start` serves it without Vite.
-Production builds default to the deployed Cloudflare room server. Override
+Production builds use same-origin WebSockets on Cloudflare. Override
 `VITE_WS_URL` at build time to use a different server.
 
 ```sh
@@ -41,12 +41,12 @@ positions, profile edits, host departure and room cleanup, then disconnects ever
 
 ## Hosting
 
-The frontend is a static Sites deployment, identified in `.openai/hosting.json`.
-The backend is the `bus-club-rooms` Cloudflare Worker at
+The frontend and multiplayer backend are served by the `bus-club-rooms` Cloudflare Worker at
 `https://bus-club-rooms.neuralshift-games.workers.dev`.
 `worker/index.js` exports `BusRoom`; bind `BUS_ROOM` to that class and create a SQLite
 Durable Object migration (`new_sqlite_classes: ["BusRoom"]`, tag `v1`).
-The committed Wrangler configuration documents these bindings for future CLI deployment.
+The committed Wrangler configuration includes the built `dist/` static assets.
+Run `npm run deploy` to build and deploy with an authenticated Cloudflare CLI.
 Each room has its own Durable Object. WebSockets use hibernation; motion snapshots are
 batched, skins are only resent when profiles change, and SQL profile data is cleared
 when the last participant leaves. There are no game accounts or persistent cloud saves.

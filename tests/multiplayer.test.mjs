@@ -22,6 +22,8 @@ test('three real clients share state and customized skins, including late joiner
   a.send({type:'state',state:{x:42,z:100,yaw:1.5,speed:12}});
   c.send({type:'join',code:room.code,profile:profile('C')});const joined=await c.wait('room',m=>m.players.length===3);
   assert.equal(joined.players.find(p=>p.name==='A').skin.image,image);
+  assert.equal(joined.players.find(p=>p.name==='B').z,18);
+  assert.equal(joined.players.find(p=>p.name==='C').z,36);
   const snapshot=await c.wait('snapshot',m=>m.players.some(p=>p.id===room.selfId&&p.x===42));
   assert.equal(snapshot.players.find(p=>p.id===room.selfId).speed,12);
   b.send({type:'profile',profile:profile('Updated')});await c.wait('room',m=>m.players.some(p=>p.name==='Updated'));

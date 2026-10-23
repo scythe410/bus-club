@@ -5,3 +5,4 @@ dist/
 .wrangler/
 *.zip
 worker/bundle.js
+.openai/
