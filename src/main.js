@@ -4,7 +4,8 @@ import {createUI} from './ui.js';
 import {RoomClient} from './network.js';
 import {BusAudio} from './audio.js';
 
-let game,network,ui,driving=false,paused=false,sound=false,profileTimer,spawnedId=null;
+let game,network,ui,driving=false,paused=false,sound=true,profileTimer,spawnedId=null;
+try{sound=localStorage.getItem('bus-club-sound')!=='off';}catch{}
 const audio=new BusAudio();
 const input={left:false,right:false,throttle:false,brake:false};
 const toast=message=>ui?.toast(message);
@@ -45,8 +46,10 @@ ui=createUI({
     try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
     catch{toast('Fullscreen is unavailable in this browser.');}
   },
-  onSound:async()=>{sound=!sound;await audio.enable(sound);ui.setSound(sound);},
+  onSound:async value=>{sound=value;try{localStorage.setItem('bus-club-sound',sound?'on':'off');}catch{}await audio.enable(sound);ui.setSound(sound);},
 });
+
+ui.setSound(sound);
 
 network=new RoomClient({
   onRoom:room=>{
@@ -65,7 +68,7 @@ network=new RoomClient({
 
 try{
   game=new BusGame(document.querySelector('#game'),{
-    onTelemetry:data=>{ui.telemetry(data);audio.update(data.speed,driving&&!paused);},
+    onTelemetry:data=>{ui.telemetry(data);audio.update(data.speed,driving&&!paused,data.throttle);},
     onPickup:data=>toast(`Bus stop reached · ${data.passengers||1} passengers aboard`),
   });
   const profile=ui.getProfile();syncProfile();game.setEnvironment(profile.environment||'coast');game.setTime(profile.time||'sunset');game.setQuality(profile.quality||'auto');

@@ -13,6 +13,8 @@ Everyone then starts their own bus. Rooms exist while at least one participant r
 WASD/arrows drive; S/down brakes, then reverses. Space brakes, C cycles cameras,
 R returns to the road, H honks when sound is enabled, and Escape opens the garage.
 Touch controls appear on phones. Graphics quality can be reduced in the garage.
+The bus engine starts when you click Drive, with idle, acceleration and gear changes.
+Use the music-note button to mute; your sound preference is remembered.
 
 ## Develop
 

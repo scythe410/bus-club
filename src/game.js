@@ -49,9 +49,11 @@ export class BusGame {
     const lateral=Math.abs(this.x-roadX(this.z));this.offroad=lateral>7;
     const acceleration=throttle*5.7-this.speed*.052-Math.sign(this.speed)*(.24+(this.offroad?2:0));
     this.speed=clamp(this.speed+acceleration*dt,-5,31);if(brake)this.speed=Math.sign(this.speed)*Math.max(0,Math.abs(this.speed)-13*brake*dt);if(!throttle&&Math.abs(this.speed)<.15)this.speed=0;
+    this.throttle=throttle;this.braking=brake;
     this.steering=lerp(this.steering,steer,1-Math.exp(-5*dt));
+    // Looking along +Z, screen-right is -X; positive input turns clockwise.
     // A long wheelbase and speed-sensitive steering keep the bus planted.
-    this.yaw+=this.steering*this.speed*.075/(1+Math.abs(this.speed)*.025)*dt;
+    this.yaw-=this.steering*this.speed*.075/(1+Math.abs(this.speed)*.025)*dt;
     this.x+=Math.sin(this.yaw)*this.speed*dt;this.z+=Math.cos(this.yaw)*this.speed*dt;this.distance+=Math.abs(this.speed)*dt/1000;
     if(Math.abs(this.x-roadX(this.z))>24){this.x=lerp(this.x,roadX(this.z)+Math.sign(this.x-roadX(this.z))*22,.04);this.speed*=Math.exp(-3*dt);}
     const nearestStop=Math.round((this.z-70)/480)*480+70;const stopId=Math.round((nearestStop-70)/480);
@@ -71,7 +73,7 @@ export class BusGame {
     else if(this.cameraMode===2){targetPosition=new THREE.Vector3(this.x,height+6.8,this.z).addScaledVector(forward,-15).addScaledVector(right,13);targetLook=new THREE.Vector3(this.x,height+2,this.z).addScaledVector(forward,12);}
     else{targetPosition=new THREE.Vector3(this.x,height+6.4+this.speed*.035,this.z).addScaledVector(forward,-17-this.speed*.07);targetLook=new THREE.Vector3(this.x,height+2.4,this.z).addScaledVector(forward,13+this.speed*.2);}
     this.camera.position.lerp(targetPosition,1-Math.exp(-(this.cameraMode===1?12:3)*dt));this.lookAt.lerp(targetLook,1-Math.exp(-5*dt));this.camera.lookAt(this.lookAt);this.renderer.render(this.scene,this.camera);
-    this.telemetryTime+=dt;if(this.telemetryTime>.1){this.telemetryTime=0;let nextStop=Math.ceil((this.z-70)/480)*480+70;const stopId=Math.round((nextStop-70)/480);if(this.collected.has(stopId))nextStop+=480;this.onTelemetry({speed:Math.round(Math.abs(this.speed)*3.6),distance:this.distance,stopDistance:Math.max(0,nextStop-this.z),offroad:!!this.offroad,passengers:this.passengers,heading:this.yaw,camera:['Chase','Driver','Scenic'][this.cameraMode],quality:this.quality});}
+    this.telemetryTime+=dt;if(this.telemetryTime>.1){this.telemetryTime=0;let nextStop=Math.ceil((this.z-70)/480)*480+70;const stopId=Math.round((nextStop-70)/480);if(this.collected.has(stopId))nextStop+=480;this.onTelemetry({speed:Math.round(Math.abs(this.speed)*3.6),distance:this.distance,stopDistance:Math.max(0,nextStop-this.z),throttle:this.throttle||0,braking:this.braking||0,offroad:!!this.offroad,passengers:this.passengers,heading:this.yaw,camera:['Chase','Driver','Scenic'][this.cameraMode],quality:this.quality});}
   }
   dispose(){this.disposed=true;cancelAnimationFrame(this.frameId);window.removeEventListener('keydown',this.onKeyDown);window.removeEventListener('keyup',this.onKeyUp);window.removeEventListener('blur',this.onBlur);this.resizeObserver.disconnect();this.world.dispose();this.bus.dispose();for(const item of this.peers.values())item.bus.dispose();this.clouds.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});this.renderer.dispose();}
 }
