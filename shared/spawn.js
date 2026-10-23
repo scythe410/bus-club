@@ -7,7 +7,7 @@ export function spawnState(players=[]){
   const rows=[0,-14,14,-28,28,-42,42,-56,56];
   for(const offset of rows){
     const z=origin+offset,yaw=roadYaw(z),sin=Math.sin(yaw),cos=Math.cos(yaw);
-    for(const lane of [3.3,-3.3]){
+    for(const lane of [3.3,-3.3,4.5,-4.5]){
       const candidate={x:roadX(z)+cos*lane,y:0,z:z-sin*lane,yaw,speed:0};
       // Reserve an entire bus-length rectangle, including drivers paused in the garage.
       const occupied=states.some(p=>{
@@ -17,6 +17,6 @@ export function spawnState(players=[]){
       if(!occupied)return candidate;
     }
   }
-  // Capacity is eight; the search above has eighteen spaces around the convoy.
+  // Capacity is eight; the search above checks thirty-six nearby positions.
   const z=origin-70;return {x:roadX(z)+3.3,y:0,z,yaw:roadYaw(z),speed:0};
 }

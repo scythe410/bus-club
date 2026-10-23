@@ -18,8 +18,8 @@ test('fresh friends spawn side by side and are visible from both default cameras
  assert.ok(visibleFrom(a,b));assert.ok(visibleFrom(b,a));
 });
 test('late joiners appear beside a friend already kilometres down a curving road',()=>{
- for(const z of [2400,10000,85000]){
-  const a={x:roadX(z)+3.3,z,yaw:roadYaw(z),speed:20},b=spawnState([a]);
+ for(const z of [2400,10000,85000])for(const lateral of [0,3.3,-3.3]){
+  const a={x:roadX(z)+lateral,z,yaw:roadYaw(z),speed:20},b=spawnState([a]);
   assert.ok(distance(a,b)<10,'Must not spawn back at the start.');
   assert.ok(visibleFrom(a,b));assert.ok(visibleFrom(b,a));
  }
