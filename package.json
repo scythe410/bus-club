@@ -1,0 +1,15 @@
+{
+  "name": "bus-club",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {"three": "^0.180.0", "ws": "^8.18.3"},
+  "devDependencies": {"vite": "^7.1.0", "esbuild": "^0.25.0"}
+}
