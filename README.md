@@ -47,6 +47,9 @@ The frontend and multiplayer backend are served by the `bus-club-rooms` Cloudfla
 Durable Object migration (`new_sqlite_classes: ["BusRoom"]`, tag `v1`).
 The committed Wrangler configuration includes the built `dist/` static assets.
 Run `npm run deploy` to build and deploy with an authenticated Cloudflare CLI.
+Cloudflare Workers Builds is connected to `scythe410/bus-club`. Pushes to `main`
+automatically run `npm test && npm run build`, then `npx wrangler deploy` from the
+repository root. Other branches do not deploy to production.
 Each room has its own Durable Object. WebSockets use hibernation; motion snapshots are
 batched, skins are only resent when profiles change, and SQL profile data is cleared
 when the last participant leaves. There are no game accounts or persistent cloud saves.
