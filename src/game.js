@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { Bus } from './bus.js';
+import { createCockpit, animateCockpit } from './cockpit.js';
+import { stepVehicle } from './vehicle-physics.js';
+import { ROAD_HALF_WIDTH, LANE_CENTER } from '../shared/road.js';
 import { World, roadX, roadY, roadYaw } from './world.js';
 
 const clamp=THREE.MathUtils.clamp;
@@ -14,9 +17,9 @@ export class BusGame {
     this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.13;this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     this.ambient=new THREE.HemisphereLight('#d9eeff','#74835c',2.3);this.scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight('#fff1ce',3.2);this.sun.position.set(-80,120,65);this.sun.castShadow=true;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.camera.left=-60;this.sun.shadow.camera.right=60;this.sun.shadow.camera.top=60;this.sun.shadow.camera.bottom=-60;this.sun.shadow.camera.far=340;this.sun.shadow.normalBias=.05;this.sun.shadow.bias=-.00025;this.scene.add(this.sun,this.sun.target);
-    this.world=new World(this.scene);this.bus=new Bus(this.skin);this.scene.add(this.bus.group);
+    this.world=new World(this.scene);this.bus=new Bus(this.skin);this.bus.cockpit=createCockpit();this.bus.group.add(this.bus.cockpit);this.scene.add(this.bus.group);
     this.makeClouds();this.reset();this.camera.position.set(this.x+17,roadY(this.z)+9,this.z+19);this.lookAt=new THREE.Vector3(this.x,roadY(this.z)+1.7,this.z);this.camera.lookAt(this.lookAt);
-    this.onKeyDown=e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;const key=e.key.toLowerCase();if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key))e.preventDefault();if(!this.keys.has(key)){if(key==='r')this.reset();if(key==='c')this.setCamera();}this.keys.add(key);};
+    this.onKeyDown=e=>{if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||!this.started||this.paused||this.garage||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;const key=e.key.toLowerCase();if(key===' '&&e.target.closest?.('button,a[href]'))return;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key))e.preventDefault();if(!this.keys.has(key)){if(key==='r')this.reset();if(key==='c')this.setCamera();}this.keys.add(key);};
     this.onKeyUp=e=>this.keys.delete(e.key.toLowerCase());this.onBlur=()=>{this.keys.clear();this.input={throttle:0,brake:0,steer:0};};
     window.addEventListener('keydown',this.onKeyDown);window.addEventListener('keyup',this.onKeyUp);window.addEventListener('blur',this.onBlur);this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(canvas);this.resize();this.clock=new THREE.Clock();this.frame=this.frame.bind(this);this.frameId=requestAnimationFrame(this.frame);
   }
@@ -34,9 +37,9 @@ export class BusGame {
   setTime(value){const palette={day:{sky:'#d5e7e4',sun:'#fff1ce',ground:'#74835c',intensity:3.2,ambient:2.3,exposure:1.13},sunset:{sky:'#e4baa0',sun:'#ffc18b',ground:'#74616a',intensity:2.8,ambient:1.8,exposure:1.08},night:{sky:'#152d41',sun:'#8fbbdc',ground:'#253c48',intensity:.8,ambient:1.1,exposure:1}}[value]||null;if(!palette)return;this.time=value;this.scene.background.set(palette.sky);this.scene.fog.color.set(palette.sky);this.sun.color.set(palette.sun);this.sun.intensity=palette.intensity;this.ambient.groundColor.set(palette.ground);this.ambient.intensity=palette.ambient;this.renderer.toneMappingExposure=palette.exposure;this.bus.lampMaterial.emissiveIntensity=value==='night'?3:.45;this.clouds.visible=value!=='night';}
   setQuality(value){this.quality=value;const low=value==='low'||(value==='auto'&&(navigator.hardwareConcurrency||8)<5);this.renderer.setPixelRatio(Math.min(devicePixelRatio,low?1:1.6));this.renderer.shadowMap.enabled=!low;this.scene.fog.far=low?530:810;this.resize();}
   setCamera(){this.cameraMode=(this.cameraMode+1)%3;return ['Chase','Driver','Scenic'][this.cameraMode];}
-  reset(){this.z=this.started?Math.max(0,this.z||0):0;this.x=roadX(this.z);this.yaw=roadYaw(this.z);this.speed=0;this.steering=0;if(this.bus){this.bus.group.position.set(this.x,roadY(this.z),this.z);this.bus.group.rotation.set(0,this.yaw,0);}}
+  reset(){this.z=this.started?Math.max(0,this.z||0):0;this.yaw=roadYaw(this.z);this.x=roadX(this.z)+Math.cos(this.yaw)*LANE_CENTER;this.speed=0;this.steering=0;this.dynamics=null;if(this.bus){this.bus.group.position.set(this.x,roadY(this.z),this.z);this.bus.group.rotation.set(0,this.yaw,0);}}
   getState(){return {x:this.x,z:this.z,yaw:this.yaw,speed:this.speed};}
-  setState(state){if(!state||![state.x,state.z,state.yaw,state.speed].every(Number.isFinite))return false;this.x=clamp(state.x,-1000000,1000000);this.z=clamp(state.z,-1000000,1000000);this.yaw=Math.atan2(Math.sin(state.yaw),Math.cos(state.yaw));this.speed=clamp(state.speed,-5,31);this.steering=0;this.bus.group.position.set(this.x,roadY(this.z),this.z);this.bus.group.rotation.set(0,this.yaw,0);this.world.update(this.z);return true;}
+  setState(state){if(!state||![state.x,state.z,state.yaw,state.speed].every(Number.isFinite))return false;this.x=clamp(state.x,-1000000,1000000);this.z=clamp(state.z,-1000000,1000000);this.yaw=Math.atan2(Math.sin(state.yaw),Math.cos(state.yaw));this.speed=clamp(state.speed,-5,31);this.steering=0;this.dynamics=null;this.bus.group.position.set(this.x,roadY(this.z),this.z);this.bus.group.rotation.set(0,this.yaw,0);this.world.update(this.z);return true;}
   setPeers(peers){const seen=new Set();for(const peer of peers){if(!peer?.id||![peer.x,peer.z,peer.yaw].every(Number.isFinite))continue;seen.add(peer.id);let item=this.peers.get(peer.id);if(!item){const bus=new Bus({...peer.skin,name:peer.skin?.name||peer.name||'FRIEND'});this.scene.add(bus.group);bus.group.position.set(peer.x,roadY(peer.z),peer.z);bus.group.rotation.y=peer.yaw;item={bus,target:peer,skinRef:null};this.peers.set(peer.id,item);}item.target=peer;if(peer.skin!==item.skinRef){item.bus.setSkin({...peer.skin,name:peer.skin?.name||peer.name||'FRIEND'});item.skinRef=peer.skin;}}for(const [id,item]of this.peers)if(!seen.has(id)){this.scene.remove(item.bus.group);item.bus.dispose();this.peers.delete(id);}}
   horn(){} // Sound is owned by the application's shared, mute-aware audio controller.
   step(dt){
@@ -46,33 +49,49 @@ export class BusGame {
     if(reverse){if(this.speed>.2)brake=1;else throttle-=.7;}
     throttle=clamp(throttle,-1,1);brake=clamp(brake,0,1);
     const steer=clamp(this.input.steer-(this.keys.has('a')||this.keys.has('arrowleft')?1:0)+(this.keys.has('d')||this.keys.has('arrowright')?1:0),-1,1);
-    const lateral=Math.abs(this.x-roadX(this.z));this.offroad=lateral>7;
-    const acceleration=throttle*5.7-this.speed*.052-Math.sign(this.speed)*(.24+(this.offroad?2:0));
-    this.speed=clamp(this.speed+acceleration*dt,-5,31);if(brake)this.speed=Math.sign(this.speed)*Math.max(0,Math.abs(this.speed)-13*brake*dt);if(!throttle&&Math.abs(this.speed)<.15)this.speed=0;
+    const lateral=Math.abs((this.x-roadX(this.z))*Math.cos(roadYaw(this.z)));
+    this.offroad=lateral+1.0>ROAD_HALF_WIDTH;
+    this.dynamics=stepVehicle(this.dynamics||{speed:this.speed,steering:this.steering},{throttle,brake,steer,passengers:this.passengers,offroad:this.offroad},dt);
+    this.speed=this.dynamics.speed;this.steering=this.dynamics.steering;
     this.throttle=throttle;this.braking=brake;
-    this.steering=lerp(this.steering,steer,1-Math.exp(-5*dt));
-    // Looking along +Z, screen-right is -X; positive input turns clockwise.
-    // A long wheelbase and speed-sensitive steering keep the bus planted.
-    this.yaw-=this.steering*this.speed*.075/(1+Math.abs(this.speed)*.025)*dt;
-    this.x+=Math.sin(this.yaw)*this.speed*dt;this.z+=Math.cos(this.yaw)*this.speed*dt;this.distance+=Math.abs(this.speed)*dt/1000;
-    if(Math.abs(this.x-roadX(this.z))>24){this.x=lerp(this.x,roadX(this.z)+Math.sign(this.x-roadX(this.z))*22,.04);this.speed*=Math.exp(-3*dt);}
+    this.yaw+=this.dynamics.yawRate*dt;
+    const travelYaw=this.yaw+this.dynamics.slipAngle;
+    this.x+=Math.sin(travelYaw)*this.speed*dt;this.z+=Math.cos(travelYaw)*this.speed*dt;this.distance+=Math.abs(this.speed)*dt/1000;
+    if(Math.abs(this.x-roadX(this.z))>24){this.x=lerp(this.x,roadX(this.z)+Math.sign(this.x-roadX(this.z))*22,.04);this.speed*=Math.exp(-3*dt);this.dynamics.speed=this.speed;}
     const nearestStop=Math.round((this.z-70)/480)*480+70;const stopId=Math.round((nearestStop-70)/480);
-    if(Math.abs(this.z-nearestStop)<12&&this.speed<2&&this.speed>=0&&Math.abs(this.x-roadX(this.z))<11&&!this.collected.has(stopId)){this.collected.add(stopId);const passengers=2+Math.abs(stopId%4);this.passengers+=passengers;this.onPickup({passengers,total:this.passengers,stop:stopId});}
+    if(Math.abs(this.z-nearestStop)<12&&this.speed<2&&this.speed>=0&&(this.x-roadX(this.z))*Math.cos(roadYaw(this.z))>0&&Math.abs(this.x-roadX(this.z))<6.5&&!this.collected.has(stopId)){this.collected.add(stopId);const passengers=2+Math.abs(stopId%4);this.passengers+=passengers;this.onPickup({passengers,total:this.passengers,stop:stopId});}
   }
   frame(){
     if(this.disposed)return;this.frameId=requestAnimationFrame(this.frame);const dt=Math.min(this.clock.getDelta(),.05);this.elapsed+=dt;
     if(this.started&&!this.paused&&!this.garage)this.step(dt);
-    const height=roadY(this.z);this.bus.group.position.set(this.x,height+Math.sin(this.elapsed*1.4)*.008,this.z);this.bus.group.rotation.y=this.yaw;const pitch=Math.atan2(roadY(this.z+3)-roadY(this.z-3),6);this.bus.group.rotation.x=lerp(this.bus.group.rotation.x,-pitch,.1);this.bus.group.rotation.z=lerp(this.bus.group.rotation.z,-this.steering*this.speed*.0018,.08);this.bus.animate(this.paused?0:this.speed,dt);
+    const height=roadY(this.z);this.bus.group.position.set(this.x,height+Math.sin(this.elapsed*1.4)*.008,this.z);this.bus.group.rotation.y=this.yaw;const pitch=Math.atan2(roadY(this.z+3)-roadY(this.z-3),6);this.bus.group.rotation.x=lerp(this.bus.group.rotation.x,-pitch,.1);this.bus.group.rotation.z=lerp(this.bus.group.rotation.z,this.dynamics?.roll||0,1-Math.exp(-8*dt));this.bus.animate(this.paused?0:this.speed,dt);
     this.world.update(this.z);this.clouds.position.z=Math.floor(this.z/1000)*1000;
     this.sun.position.set(this.x-70,height+100,this.z+80);this.sun.target.position.set(this.x,height,this.z+30);
     for(const item of this.peers.values()){const p=item.bus.group.position;const t=item.target;p.x=lerp(p.x,t.x,1-Math.exp(-10*dt));p.z=lerp(p.z,t.z,1-Math.exp(-10*dt));p.y=roadY(p.z);item.bus.group.rotation.y=angleLerp(item.bus.group.rotation.y,t.yaw,1-Math.exp(-10*dt));item.bus.animate(t.speed||0,dt);item.bus.group.visible=Math.abs(t.z-this.z)<1000;}
     let targetPosition,targetLook;
     const forward=new THREE.Vector3(Math.sin(this.yaw),0,Math.cos(this.yaw));const right=new THREE.Vector3(Math.cos(this.yaw),0,-Math.sin(this.yaw));
     if(!this.started||this.garage){targetPosition=new THREE.Vector3(this.x,height+8.5,this.z).addScaledVector(forward,18).addScaledVector(right,16+Math.sin(this.elapsed*.13)*1.3);targetLook=new THREE.Vector3(this.x,height+1.9,this.z).addScaledVector(right,this.camera.aspect>1?-5:0);}
-    else if(this.cameraMode===1){targetPosition=new THREE.Vector3(this.x,height+3.05,this.z).addScaledVector(forward,4.9);targetLook=targetPosition.clone().addScaledVector(forward,40);targetLook.y=height+2.65;}
+    else if(this.cameraMode===1){
+      // Seat position is in the imported bus's local coordinates. The driver's
+      // seat is on -X: facing +Z, this is the right-hand side of the cabin.
+      this.bus.group.updateMatrixWorld(true);
+      targetPosition=this.bus.group.localToWorld(new THREE.Vector3(-.46,2.12,3.68));
+      targetLook=this.bus.group.localToWorld(new THREE.Vector3(-.46,1.9,13.68));
+    }
     else if(this.cameraMode===2){targetPosition=new THREE.Vector3(this.x,height+6.8,this.z).addScaledVector(forward,-15).addScaledVector(right,13);targetLook=new THREE.Vector3(this.x,height+2,this.z).addScaledVector(forward,12);}
     else{targetPosition=new THREE.Vector3(this.x,height+6.4+this.speed*.035,this.z).addScaledVector(forward,-17-this.speed*.07);targetLook=new THREE.Vector3(this.x,height+2.4,this.z).addScaledVector(forward,13+this.speed*.2);}
-    this.camera.position.lerp(targetPosition,1-Math.exp(-(this.cameraMode===1?12:3)*dt));this.lookAt.lerp(targetLook,1-Math.exp(-5*dt));this.camera.lookAt(this.lookAt);this.renderer.render(this.scene,this.camera);
+    const driverView=this.started&&!this.garage&&this.cameraMode===1;
+    this.bus.cockpit.visible=driverView;animateCockpit(this.bus.cockpit,this.steering);
+    const cameraFov=driverView?68:52,cameraNear=driverView?.05:.2;
+    if(this.camera.fov!==cameraFov||this.camera.near!==cameraNear){this.camera.fov=cameraFov;this.camera.near=cameraNear;this.camera.updateProjectionMatrix();}
+    if(driverView){
+      // Lock to the seat instead of chasing it through the rear seats on turns.
+      this.camera.position.copy(targetPosition);this.lookAt.copy(targetLook);
+      this.camera.up.set(0,1,0).applyQuaternion(this.bus.group.quaternion);
+    }else{
+      this.camera.position.lerp(targetPosition,1-Math.exp(-3*dt));this.lookAt.lerp(targetLook,1-Math.exp(-5*dt));this.camera.up.set(0,1,0);
+    }
+    this.camera.lookAt(this.lookAt);this.renderer.render(this.scene,this.camera);
     this.telemetryTime+=dt;if(this.telemetryTime>.1){this.telemetryTime=0;let nextStop=Math.ceil((this.z-70)/480)*480+70;const stopId=Math.round((nextStop-70)/480);if(this.collected.has(stopId))nextStop+=480;this.onTelemetry({speed:Math.round(Math.abs(this.speed)*3.6),distance:this.distance,stopDistance:Math.max(0,nextStop-this.z),throttle:this.throttle||0,braking:this.braking||0,offroad:!!this.offroad,passengers:this.passengers,heading:this.yaw,camera:['Chase','Driver','Scenic'][this.cameraMode],quality:this.quality});}
   }
   dispose(){this.disposed=true;cancelAnimationFrame(this.frameId);window.removeEventListener('keydown',this.onKeyDown);window.removeEventListener('keyup',this.onKeyUp);window.removeEventListener('blur',this.onBlur);this.resizeObserver.disconnect();this.world.dispose();this.bus.dispose();for(const item of this.peers.values())item.bus.dispose();this.clouds.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});this.renderer.dispose();}

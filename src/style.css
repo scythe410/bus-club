@@ -7,3 +7,176 @@
 @media(pointer:coarse){.touch-controls{display:flex}.controls-legend{display:none}}
 @media(prefers-reduced-motion:no-preference){button{transition:background .15s,border-color .15s,color .15s}.panel{animation:panel-enter .45s ease-out}@keyframes panel-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}}
 @media(max-width:420px){.top-actions>div.status-pill{display:none}}
+
+/* Consistent, legible controls over the moving landscape. */
+:root{--muted:#c0c8bd;--panel:rgba(20,35,28,.95)}
+button,input,select,label.upload{touch-action:manipulation}
+button,a,input,select{-webkit-tap-highlight-color:transparent}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+a{color:var(--cream);text-underline-offset:3px}
+a:hover{color:var(--lime)}
+.icon{display:inline-block;width:20px;height:20px;flex:none;vertical-align:middle;pointer-events:none}
+.button-label{min-width:0}
+button .icon,.upload .icon{vertical-align:middle}
+.status-pill,.secondary-button,.mini-actions button,.text-button,.segmented button,.upload{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.icon-button{width:44px;height:44px;flex:none}
+.status-pill{min-height:44px;font-size:12px;letter-spacing:0}
+.status-dot{flex:none}
+.brand-mark:has(.icon):before,.brand-mark:has(.icon):after{display:none}
+.brand-mark .icon{width:27px;height:27px}
+.panel{overscroll-behavior:contain;scroll-padding:20px 0 90px;scrollbar-gutter:stable}
+.panel-inner{padding-bottom:0}
+.eyebrow{font-size:10px;letter-spacing:1.7px}
+.intro{font-size:13px;line-height:1.65}
+.section-heading{font-size:13px;gap:10px}
+.section-number{font-size:10px;letter-spacing:.5px;white-space:nowrap}
+.field>span,.field-label{font-size:10px;letter-spacing:1px}
+input[type=text],select{min-height:44px;font-size:13px;border-color:#ffffff2b;background:#ffffff07}
+input[type=text]:hover,select:hover{border-color:#ffffff55}
+.preset{height:48px}
+.colors{gap:10px;flex-wrap:wrap}
+.color-field{font-size:11px;min-height:44px;gap:6px}
+.color-field input{width:32px;height:32px;flex:none}
+.colors>.field{min-width:130px}
+.upload{min-height:46px;font-size:12px;line-height:1.5;flex-wrap:wrap;gap:5px;padding:10px 8px;color:var(--cream)}
+.upload-row{align-items:stretch}
+.text-button{min-height:44px;font-size:12px;padding:8px 5px}
+.segmented button{min-height:44px;font-size:12px;line-height:1.3;padding:9px 6px;gap:6px}
+.segmented button .icon{width:17px;height:17px}
+.segmented button:hover{border-color:#d9ee8960;background:#d9ee890b}
+.segmented button[aria-pressed=true]{box-shadow:inset 0 0 0 1px #d9ee8920}
+.drive-button{min-height:48px;font-size:13px;gap:10px}
+.garage-drive{position:sticky;bottom:0;z-index:2;margin:20px -26px 0;padding:14px 26px 18px;background:#182b20;border-top:1px solid var(--line);box-shadow:0 -12px 24px #14231c30}
+.garage-drive .drive-button{margin:0}
+.garage-scroll-hint{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;line-height:1.5;margin:0 0 18px}
+.garage-scroll-hint .icon{width:15px;height:15px}
+.room-title{font-size:16px}
+.room-sub{font-size:12px;line-height:1.65}
+.room-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.room-actions>#create-room{grid-column:1/-1}
+.room-actions input{width:100%;min-width:0}
+.secondary-button{min-height:44px;font-size:12px;padding:9px 12px;white-space:normal;line-height:1.4}
+.friend-chip{font-size:12px;padding:7px 10px;overflow-wrap:anywhere;max-width:100%}
+.solo-note{font-size:11px;line-height:1.65;color:#b6c2ae;overflow-wrap:anywhere}
+.ui-footer{gap:8px;margin-top:10px;align-items:center}
+.ui-footer button{font-size:11px}
+.quality-select{min-height:44px;font-size:11px;padding:8px 5px;max-width:150px}
+.garage-toggle{min-height:44px;font-size:12px;padding:10px 15px;gap:9px}
+.drive-hud{max-width:calc(50vw - 70px)}
+.route-card{background:linear-gradient(90deg,#152b22b8,transparent);padding:9px 20px 9px 13px;border-radius:0 8px 8px 0}
+.route-meta{font-size:11px;line-height:1.6}
+.mini-actions{flex-wrap:wrap;gap:7px;margin-top:12px}
+.mini-actions button{min-height:44px;min-width:44px;font-size:12px;padding:9px 11px;backdrop-filter:blur(12px)}
+.mini-actions button:hover{background:#2c4933;border-color:#d9ee8970}
+.mini-actions .icon{width:18px;height:18px}
+.speed-value{font-variant-numeric:tabular-nums}
+.modal{max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain}
+.modal-backdrop{z-index:25;padding:max(16px,env(safe-area-inset-top)) 0 max(16px,env(safe-area-inset-bottom))}
+.help-row{gap:16px;line-height:1.5}
+.help-row>span:last-child{text-align:right;flex-shrink:0}
+.toast{border-radius:12px;line-height:1.5;pointer-events:none}
+.touch-controls button{display:grid;place-items:center;backdrop-filter:blur(12px)}
+.touch-controls .icon{width:26px;height:26px}
+
+@media(max-height:850px) and (min-width:701px){
+  .garage-drive{margin-right:-21px;margin-left:-21px;padding:12px 21px 15px}
+}
+@media(min-width:1600px){.panel{bottom:38px;max-height:calc(100dvh - 168px)}}
+@media(max-width:1000px) and (min-width:701px){
+  .topbar{left:24px;right:24px}
+  .brand-title{font-size:23px}
+  .brand-caption{font-size:9px;letter-spacing:1px}
+  .status-pill{padding:10px 12px}
+  .world-caption{right:24px;max-width:calc(100vw - 450px)}
+  .world-caption h2{font-size:clamp(36px,5.7vw,57px);letter-spacing:-2px}
+  .world-caption p{font-size:9px;line-height:1.8;letter-spacing:1px}
+  .controls-legend{font-size:9px;right:24px}
+}
+@media(max-width:700px){
+  .topbar{top:max(12px,env(safe-area-inset-top));left:16px;right:16px;gap:8px;min-height:44px}
+  .brand-title{font-size:20px;letter-spacing:-1px;white-space:nowrap}
+  .brand-caption{font-size:8px;letter-spacing:.6px;margin-top:6px}
+  .top-actions{gap:5px}
+  .top-actions .status-pill{min-height:44px;padding:9px 11px;font-size:11px}
+  .top-actions>div.status-pill{display:none}
+  .icon-button{width:44px;height:44px}
+  .icon-button .icon{width:20px;height:20px}
+  .invite-label{display:flex;align-items:center;gap:6px}
+  .panel{top:calc(max(12px,env(safe-area-inset-top)) + 62px);bottom:max(12px,env(safe-area-inset-bottom));left:12px;width:min(360px,calc(100vw - 24px));border-radius:15px}
+  .panel-inner{padding:22px 20px 0}
+  .garage-drive{margin-right:-20px;margin-left:-20px;padding:12px 20px max(14px,env(safe-area-inset-bottom))}
+  .garage-title{font-size:30px}
+  .intro{font-size:13px}
+  .garage-toggle{top:calc(max(12px,env(safe-area-inset-top)) + 62px);left:16px}
+  .drive-hud{left:16px;bottom:max(16px,env(safe-area-inset-bottom));max-width:calc(100vw - 110px)}
+  .route-card{padding:6px 10px 6px 11px}
+  .route-name{font-size:15px;margin:5px 0}
+  .route-meta{font-size:10px}
+  .drive-hud .eyebrow{font-size:9px}
+  .mini-actions{gap:6px;margin-top:8px}
+  .mini-actions button{font-size:11px;min-height:44px;padding:8px 10px;gap:5px}
+  .speedometer{right:18px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 9px)}
+  .speed-value{font-size:45px;letter-spacing:-2px}
+  .speed-unit{font-size:9px;letter-spacing:1.2px}
+  .touch-controls{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 144px);left:16px;right:16px}
+  .touch-group{gap:8px}
+  .touch-controls button{width:54px;height:58px}
+  .toast{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 212px);max-width:calc(100vw - 32px);min-width:0;width:max-content;font-size:12px;padding:11px 16px}
+  .modal{padding:24px}
+}
+@media(max-width:380px){
+  .topbar{left:12px;right:12px}
+  .brand-title{font-size:18px}
+  .brand-caption{font-size:7px;letter-spacing:.3px}
+  #convoy-toggle{padding:9px;gap:4px}
+  .top-actions{gap:4px}
+  .panel-inner{padding-right:16px;padding-left:16px}
+  .garage-drive{margin-right:-16px;margin-left:-16px;padding-right:16px;padding-left:16px}
+  .mini-actions button{padding-right:8px;padding-left:8px}
+  .mini-actions .button-label{display:none}
+  .touch-controls button{width:50px}
+  .section-heading{font-size:12px}
+}
+@media(pointer:coarse) and (min-width:701px){
+  .touch-controls{bottom:175px}
+  .drive-hud{max-width:calc(50vw - 80px)}
+}
+@media(max-height:500px) and (orientation:landscape){
+  .topbar{top:10px;left:16px;right:16px}
+  .brand-caption{display:none}
+  .panel{top:66px;bottom:10px;left:16px;width:min(360px,calc(100vw - 32px))}
+  .garage-toggle{top:66px;left:16px}
+  .drive-hud{left:16px;bottom:14px;max-width:calc(50vw - 40px)}
+  .route-card{display:none}
+  .mini-actions{gap:5px;margin:0}
+  .mini-actions .button-label{display:none}
+  .speedometer{bottom:14px;right:16px;left:auto;transform:none}
+  .speed-value{font-size:42px}
+  .touch-controls{bottom:80px;left:16px;right:16px}
+  .touch-controls button{height:48px;width:52px}
+  .world-caption{display:none}
+  .toast{bottom:145px}
+}
+.upload{background:transparent;text-align:left;border-color:#ffffff45}
+.upload-format{display:block;font-size:10px;color:var(--muted);letter-spacing:.3px}
+.brand-mark:has(.icon){border:0;width:36px;height:39px}
+.brand-mark .icon{width:36px;height:36px}
+.garage-drive-note{font-size:10px;line-height:1.5;color:var(--muted);margin:0 0 9px;text-align:center}
+@media(max-width:700px){
+  .mini-actions{flex-wrap:nowrap}
+  .mini-actions .button-label{display:none}
+  .mini-actions button{width:44px;min-width:44px;padding:10px}
+  .touch-controls{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 156px)}
+}
+@media(max-width:700px){.toast{top:130px;bottom:auto}}
+
+/* Scoped annotation refinements. */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.model-credit{font-size:9px;line-height:1.5;margin-top:14px}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  #drive{transition:transform 140ms ease-out,background-color 140ms ease-out}
+  #drive>.icon{transition:transform 140ms ease-out}
+  #drive:hover{transform:translateY(-1px)}
+  #drive:hover>.icon{transform:translate(1px,-1px)}
+  #drive:active{transform:translateY(0)}
+}

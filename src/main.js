@@ -15,6 +15,7 @@ const syncProfile=()=>{
   clearTimeout(profileTimer);profileTimer=setTimeout(()=>network?.updateProfile(profile),400);
 };
 const setPause=(value,{garage=false}={})=>{
+  if(garage)driving=false;
   paused=value;game?.setPaused(value||!driving);if(garage)game?.setGarage(true);ui.setPaused(value&&!garage);
   if(value){for(const key in input)input[key]=false;game?.setInput({throttle:0,brake:0,steer:0});}
 };
@@ -32,7 +33,7 @@ ui=createUI({
     catch{toast(`Room code: ${network.code}. Share the address with ?room=${network.code}`);}
   },
   onLeaveRoom:()=>{network.leave();const url=new URL(location.href);url.searchParams.delete('room');history.replaceState(null,'',url);},
-  onCamera:()=>game?.setCamera(),
+  onCamera:()=>{const camera=game?.setCamera();if(camera)toast(`${camera} camera`);},
   onReset:()=>{game?.reset();toast('Back on the road.');},
   onHorn:()=>audio.horn(),
   onEnvironment:value=>game?.setEnvironment(value),
@@ -46,7 +47,11 @@ ui=createUI({
     try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
     catch{toast('Fullscreen is unavailable in this browser.');}
   },
-  onSound:async value=>{sound=value;try{localStorage.setItem('bus-club-sound',sound?'on':'off');}catch{}await audio.enable(sound);ui.setSound(sound);},
+  onSound:async value=>{
+    const previous=sound;
+    try{await audio.enable(value);sound=value;try{localStorage.setItem('bus-club-sound',sound?'on':'off');}catch{}ui.setSound(sound);}
+    catch{sound=previous;audio.enabled=previous;audio.setActive(driving&&!paused);ui.setSound(previous);toast('Sound could not start. Try enabling it again.');}
+  },
 });
 
 ui.setSound(sound);
@@ -62,20 +67,24 @@ network=new RoomClient({
   onError:message=>toast(message),
   onStatus:status=>{
     if(status==='connecting')toast('Connecting to your convoy…');
+    if(status==='connected')toast('Convoy ready. Copy the invite link to bring your friends.');
     if(status==='disconnected')toast('Convoy disconnected. You can keep driving solo and rejoin.');
   },
 });
 
 try{
   game=new BusGame(document.querySelector('#game'),{
-    onTelemetry:data=>{ui.telemetry(data);audio.update(data.speed,driving&&!paused,data.throttle);},
+    onTelemetry:data=>{ui.telemetry(data);audio.update(data.speed,driving&&!paused,data.throttle,{braking:data.braking,offroad:data.offroad,passengers:data.passengers,camera:data.camera});},
     onPickup:data=>toast(`Bus stop reached · ${data.passengers||1} passengers aboard`),
   });
   const profile=ui.getProfile();syncProfile();game.setEnvironment(profile.environment||'coast');game.setTime(profile.time||'sunset');game.setQuality(profile.quality||'auto');
-  document.querySelector('#loading-status')?.setAttribute('hidden','');
+  game.bus.ready.then(loaded=>{
+    document.querySelector('#loading-status')?.setAttribute('hidden','');
+    if(!loaded)toast('The Sri Lanka bus could not load. You can keep driving the classic bus; reload to try again.');
+  });
   setInterval(()=>{if(driving)network.sendState(game.getState());},75);
   const invited=new URL(location.href).searchParams.get('room');
-  if(invited)network.join(invited,profile);
+  if(invited)network.join(invited,profile).catch(error=>toast(error.message));
 }catch(error){
   console.error(error);
   const target=document.querySelector('#error-status');
@@ -84,7 +93,8 @@ try{
 }
 
 document.addEventListener('keydown',event=>{
-  if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName))return;
+  if(event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey||!driving||paused||!document.querySelector('#help-modal')?.hidden)return;
+  if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)||document.activeElement?.isContentEditable)return;
   if(event.code==='KeyH'&&!event.repeat)audio.horn();
 });
 window.addEventListener('blur',()=>{if(driving&&!paused)setPause(true);});

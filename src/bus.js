@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createBusModel } from './imported-bus.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const box = (w,h,d,mat,x=0,y=0,z=0) => {const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;};
@@ -45,9 +46,47 @@ export class Bus {
     for(const side of [-1,1]){const panel=new THREE.Mesh(new THREE.PlaneGeometry(8.25,1.07),new THREE.MeshStandardMaterial({roughness:.8}));panel.position.set(side*1.386,1.28,0);panel.rotation.y=side*Math.PI/2;this.group.add(panel);this.sidePanels.push(panel);}
     this.destination=new THREE.Mesh(new THREE.PlaneGeometry(2.43,.4),new THREE.MeshStandardMaterial({roughness:.7,emissive:'#fff1cb',emissiveIntensity:.3}));this.destination.position.set(0,3.48,4.74);this.group.add(this.destination);
     this.setSkin(this.skin);
+    this.ready=this.loadModel();
+  }
+  async loadModel(){
+    try {
+      const model=await createBusModel();
+      if(this.disposed){this.disposeModel(model);return;}
+      // Retain editable signs and liveries while replacing the procedural shell.
+      const retained=new Set([...this.sidePanels,this.destination,this.cockpit]);
+      for(const child of [...this.group.children]){
+        if(retained.has(child))continue;
+        this.group.remove(child);this.disposeModel(child);
+      }
+      this.group.scale.setScalar(10.934/9.8);this.group.add(model);this.importedModel=model;
+      this.wheels=[];
+      model.traverse(mesh=>{
+        if(mesh.userData.wheel){mesh.userData.radius*=10.934/9.8;this.wheels.push(mesh);}
+        if(mesh.material?.name==='Material.006')this.accentMaterial=mesh.material;
+        if(['Material_1.003','Material.011'].includes(mesh.material?.name)){
+          mesh.material.emissive.set('#ffe7a0');
+          mesh.material.emissiveIntensity=this.lampMaterial.emissiveIntensity;
+          if(!this.headlights)this.headlights=[];
+          this.headlights.push(mesh.material);
+        }
+      });
+      for(const panel of this.sidePanels){
+        panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,.55);
+        panel.position.set(Math.sign(panel.position.x)*1.035,1.12,.2);
+      }
+      this.destination.geometry.dispose();this.destination.geometry=new THREE.PlaneGeometry(1.7,.24);
+      this.destination.position.set(0,2.53,4.53);
+      this.setSkin(this.skin);
+      return true;
+    }catch(error){console.warn('Using the classic bus because the Sri Lanka model could not load.',error);return false;}
+  }
+  disposeModel(root){
+    const mats=new Set(),geoms=new Set(),textures=new Set();
+    root.traverse(o=>{if(o.geometry)geoms.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m){mats.add(m);if(!m.userData.sharedTextures)for(const value of Object.values(m))if(value?.isTexture)textures.add(value);}});
+    for(const t of textures)t.dispose();for(const m of mats)m.dispose();for(const g of geoms)g.dispose();
   }
   setSkin(next){
-    Object.assign(this.skin,next);const s=this.skin;this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(s.accent);
+    Object.assign(this.skin,next);const s=this.skin;if(!this.importedModel)this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(s.accent);
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=160;const c=canvas.getContext('2d');
     c.fillStyle=s.color;c.fillRect(0,0,1024,160);c.fillStyle=s.accent;
     if(s.pattern==='wave'){c.beginPath();c.moveTo(0,85);for(let x=0;x<=1024;x+=8)c.lineTo(x,85+Math.sin(x/130)*35);c.lineTo(1024,160);c.lineTo(0,160);c.fill();}
@@ -68,6 +107,6 @@ export class Bus {
     if(s.image&&!imageUnchanged){this.loadedImage=s.image;const source=s.image;const version=(this.imageVersion||0)+1;this.imageVersion=version;new THREE.TextureLoader().load(source,tex=>{if(this.disposed||this.loadedImage!==source||this.imageVersion!==version){tex.dispose();return;}tex.colorSpace=THREE.SRGBColorSpace;this.uploadedTexture=tex;const old=new Set(this.sidePanels.map(p=>p.material.map));for(const p of this.sidePanels){p.material.map=tex;p.material.needsUpdate=true;}for(const t of old)if(t)t.dispose();});}
     if(!s.image){this.loadedImage=null;this.imageVersion=(this.imageVersion||0)+1;}
   }
-  animate(speed,dt){for(const wheel of this.wheels)wheel.rotation.x+=speed*dt/.6;}
-  dispose(){this.disposed=true;const mats=new Set(),geoms=new Set(),textures=new Set();this.group.traverse(o=>{if(o.geometry)geoms.add(o.geometry);if(o.material){mats.add(o.material);if(o.material.map)textures.add(o.material.map);}});for(const t of textures)t.dispose();for(const m of mats)m.dispose();for(const g of geoms)g.dispose();}
+  animate(speed,dt){for(const wheel of this.wheels)wheel.rotation.x+=speed*dt/(wheel.userData.radius||.6);for(const mat of this.headlights||[])mat.emissiveIntensity=this.lampMaterial.emissiveIntensity;}
+  dispose(){this.disposed=true;this.disposeModel(this.group);this.bodyMaterial.dispose();this.lampMaterial.dispose();}
 }

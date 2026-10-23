@@ -17,14 +17,25 @@ export class RoomClient {
     const url=new URL(configured || `${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/ws`);
     url.searchParams.set('room',code);url.searchParams.set('intent',intent);
     const socket=new WebSocket(url);this.socket=socket;
+    let resolveConnection,rejectConnection;
+    const connection=new Promise((resolve,reject)=>{resolveConnection=resolve;rejectConnection=reject;});
+    const settle=(error,room)=>{
+      if(this.pendingConnection?.generation!==generation)return;
+      clearTimeout(this.pendingConnection.timer);this.pendingConnection=null;
+      if(error)rejectConnection(error);else resolveConnection(room);
+    };
+    const timer=setTimeout(()=>{if(generation!==this.generation)return;settle(new Error('Connecting took too long. Please try again.'));socket.close();},15000);
+    this.pendingConnection={generation,timer,reject:rejectConnection};
     socket.addEventListener('open',()=>{if(generation===this.generation)socket.send(JSON.stringify({type:intent,code,profile}));});
     socket.addEventListener('message',event=>{
       if (generation!==this.generation) return;
       let message;try {message=JSON.parse(event.data);}catch{return;}
       if (message.type==='room') {
+        const newlyConnected=!this.code;
         this.code=message.code;this.selfId=message.selfId;
         this.players=new Map(message.players.map(p=>[p.id,p]));
-        this.onStatus('connected');this.onRoom({code:this.code,selfId:this.selfId,players:message.players});
+        const room={code:this.code,selfId:this.selfId,players:message.players};
+        if(newlyConnected)this.onStatus('connected');this.onRoom(room);settle(null,room);
         this.emitPeers();
       } else if(message.type==='snapshot') {
         for(const state of message.players) {
@@ -32,13 +43,16 @@ export class RoomClient {
           if(player)this.players.set(state.id,{...player,...state});
         }
         this.emitPeers();
-      } else if(message.type==='error') {this.onError(message.message);if(!this.code)this.onStatus('error');}
+      } else if(message.type==='error') {this.onError(message.message);if(!this.code){this.onStatus('error');settle(new Error(message.message));socket.close();}}
     });
-    socket.addEventListener('error',()=>{if(generation===this.generation){this.onError('Could not connect to the convoy server.');this.onStatus('error');}});
+    socket.addEventListener('error',()=>{if(generation===this.generation){const message='Could not connect to the convoy server.';this.onError(message);this.onStatus('error');settle(new Error(message));}});
     socket.addEventListener('close',()=>{
       if(generation!==this.generation)return;
-      this.socket=null;this.code=null;this.players.clear();this.onPeers([]);this.onRoom(null);this.onStatus('disconnected');
+      const wasConnected=Boolean(this.code);
+      settle(new Error('The convoy connection closed. Please try again.'));
+      this.socket=null;this.code=null;this.players.clear();this.onPeers([]);this.onRoom(null);this.onStatus(wasConnected?'disconnected':'offline');
     });
+    return connection;
   }
   emitPeers() {this.onPeers([...this.players.values()].filter(p=>p.id!==this.selfId));}
   send(message) {if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify(message));}
@@ -48,6 +62,7 @@ export class RoomClient {
   }
   updateProfile(profile) {this.send({type:'profile',profile});}
   leave() {
+    if(this.pendingConnection){clearTimeout(this.pendingConnection.timer);this.pendingConnection.reject(new Error('Connection cancelled.'));this.pendingConnection=null;}
     this.generation++;
     if(this.socket) {if(this.socket.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({type:'leave'}));this.socket.close();}
     this.socket=null;this.code=null;this.selfId=null;this.players.clear();this.onPeers([]);this.onRoom(null);this.onStatus('offline');

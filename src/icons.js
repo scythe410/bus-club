@@ -1,0 +1,33 @@
+import svg0 from './icons/bus.svg?raw';
+import svg1 from './icons/group.svg?raw';
+import svg2 from './icons/sound-high.svg?raw';
+import svg3 from './icons/sound-off.svg?raw';
+import svg4 from './icons/expand.svg?raw';
+import svg5 from './icons/collapse.svg?raw';
+import svg6 from './icons/upload.svg?raw';
+import svg7 from './icons/sea-waves.svg?raw';
+import svg8 from './icons/pine-tree.svg?raw';
+import svg9 from './icons/sun-light.svg?raw';
+import svg10 from './icons/sea-and-sun.svg?raw';
+import svg11 from './icons/half-moon.svg?raw';
+import svg12 from './icons/arrow-up-right.svg?raw';
+import svg13 from './icons/arrow-right.svg?raw';
+import svg14 from './icons/arrow-left.svg?raw';
+import svg15 from './icons/arrow-up.svg?raw';
+import svg16 from './icons/arrow-down.svg?raw';
+import svg17 from './icons/pause.svg?raw';
+import svg18 from './icons/play.svg?raw';
+import svg19 from './icons/camera.svg?raw';
+import svg20 from './icons/restart.svg?raw';
+import svg21 from './icons/garage.svg?raw';
+import svg22 from './icons/help-circle.svg?raw';
+import svg23 from './icons/copy.svg?raw';
+import svg24 from './icons/log-out.svg?raw';
+import svg25 from './icons/log-in.svg?raw';
+import svg26 from './icons/megaphone.svg?raw';
+import svg27 from './icons/hourglass.svg?raw';
+import svg28 from './icons/check.svg?raw';
+
+// Iconoir 7.12.1 · MIT · https://iconoir.com/
+const icons = { 'bus':svg0, 'group':svg1, 'sound-high':svg2, 'sound-off':svg3, 'expand':svg4, 'collapse':svg5, 'upload':svg6, 'sea-waves':svg7, 'pine-tree':svg8, 'sun-light':svg9, 'sea-and-sun':svg10, 'half-moon':svg11, 'arrow-up-right':svg12, 'arrow-right':svg13, 'arrow-left':svg14, 'arrow-up':svg15, 'arrow-down':svg16, 'pause':svg17, 'play':svg18, 'camera':svg19, 'restart':svg20, 'garage':svg21, 'help-circle':svg22, 'copy':svg23, 'log-out':svg24, 'log-in':svg25, 'megaphone':svg26, 'hourglass':svg27, 'check':svg28 };
+export const icon = name => (icons[name] || icons['help-circle']).replace('<svg ', '<svg class="icon" aria-hidden="true" focusable="false" ');

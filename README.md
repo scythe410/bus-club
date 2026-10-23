@@ -63,11 +63,44 @@ Skin customization is saved on the current browser, including compressed uploade
 ## Performance and current scope
 
 Terrain is deterministic and bounded to nine recycled tiles. Trees, rocks and roadside
-posts are instanced. Bus body meshes are merged by material. Fog limits draw distance,
+posts are instanced. Bus body meshes are merged by material. The Sri Lanka bus GLB adds a 5.9 MB asset download, cached and shared across convoy instances. Fog limits draw distance,
 pixel ratio is capped, quality controls shadows/resolution, and remote buses interpolate
-between network updates. The production JS download is approximately 138 KB gzip.
+between network updates. The production JS download is approximately 172 KB gzip, plus the bus asset.
 
 This is a casual convoy prototype: driving is client-authoritative, remote buses do not
-collide, trees are decorative, and the driver camera has no detailed interior. Room codes
+collide, trees are decorative, and the driver camera uses a lightweight cockpit supplement. Room codes
 are invite-only discovery rather than account authentication. Everyone shares the same
 road geometry; scenery and lighting can be chosen individually.
+
+## Bus model
+
+The default player and convoy vehicle uses **Sri Lanka 3D Bus model** by
+[lk motionfx](https://sketchfab.com/automaker), licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+[Original model](https://sketchfab.com/3d-models/sri-lanka-3d-bus-model-4c5028233cee43efbe3ddb1a29445fa9).
+See `public/models/ATTRIBUTION.md` for adaptations and credit details.
+
+The GLB is served locally; gameplay does not require a Sketchfab login.
+Its original body texture is retained. Color/pattern/upload controls customize
+added side panels, Accent recolors the bumper, and destination text updates the
+front sign. Other model parts are fixed. Wheels animate while driving, and the
+classic procedural bus remains a fallback if the GLB cannot load.
+
+## UI and handling
+
+Controls use locally bundled [Iconoir](https://iconoir.com/) SVGs (MIT;
+`src/icons/LICENSE`). Garage actions stay visible while scrolling, interactive
+controls have larger targets, and dialogs isolate keyboard focus. Uploads work
+with keyboard activation. Convoy connection actions wait for a server response.
+
+The road uses two 3.5 m lanes and 0.4 m paved margins. The imported bus is scaled
+uniformly to about 10.93 m long / 2.52 m wide; solo resets use the left lane,
+and shared spawn logic places eight convoy members without overlapping.
+
+Handling includes power/mass-based acceleration, load-sensitive braking,
+speed-sensitive steering assist and damped visual body roll. It is a casual game
+approximation, without rollover or tire/suspension simulation. See
+`review/bus-physics.md` for manufacturer references and assumed parameters,
+and `review/ui-review.md` for the interface checks.
+
+The inside camera sits on the model’s right-hand driver seat, follows its pitch and roll, and shows an added lightweight steering wheel/dashboard. Bus sounds use native WebAudio synthesis (diesel pulses, gears/load, road noise, air-brake release and horn), not recorded samples; audio DSP suspends when muted or in the garage. New profiles default to pookie / 99.
