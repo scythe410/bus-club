@@ -18,14 +18,22 @@ export class BusGame {
     this.ambient=new THREE.HemisphereLight('#d9eeff','#74835c',2.3);this.scene.add(this.ambient);
     this.sun=new THREE.DirectionalLight('#fff1ce',3.2);this.sun.position.set(-80,120,65);this.sun.castShadow=true;this.sun.shadow.mapSize.set(1024,1024);this.sun.shadow.camera.left=-60;this.sun.shadow.camera.right=60;this.sun.shadow.camera.top=60;this.sun.shadow.camera.bottom=-60;this.sun.shadow.camera.far=340;this.sun.shadow.normalBias=.05;this.sun.shadow.bias=-.00025;this.scene.add(this.sun,this.sun.target);
     this.world=new World(this.scene);this.bus=new Bus(this.skin);this.bus.cockpit=createCockpit();this.bus.group.add(this.bus.cockpit);this.scene.add(this.bus.group);
+    this.cameraForward=new THREE.Vector3();this.cameraRight=new THREE.Vector3();this.targetPosition=new THREE.Vector3();this.targetLook=new THREE.Vector3();
     this.makeClouds();this.reset();this.camera.position.set(this.x+17,roadY(this.z)+9,this.z+19);this.lookAt=new THREE.Vector3(this.x,roadY(this.z)+1.7,this.z);this.camera.lookAt(this.lookAt);
     this.onKeyDown=e=>{if(e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey||!this.started||this.paused||this.garage||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;const key=e.key.toLowerCase();if(key===' '&&e.target.closest?.('button,a[href]'))return;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(key))e.preventDefault();if(!this.keys.has(key)){if(key==='r')this.reset();if(key==='c')this.setCamera();}this.keys.add(key);};
     this.onKeyUp=e=>this.keys.delete(e.key.toLowerCase());this.onBlur=()=>{this.keys.clear();this.input={throttle:0,brake:0,steer:0};};
     window.addEventListener('keydown',this.onKeyDown);window.addEventListener('keyup',this.onKeyUp);window.addEventListener('blur',this.onBlur);this.resizeObserver=new ResizeObserver(()=>this.resize());this.resizeObserver.observe(canvas);this.resize();this.clock=new THREE.Clock();this.frame=this.frame.bind(this);this.frameId=requestAnimationFrame(this.frame);
   }
   makeClouds(){
-    this.clouds=new THREE.Group();const material=new THREE.MeshBasicMaterial({color:'#f6f6e9',transparent:true,opacity:.6,depthWrite:false});
-    for(let i=0;i<16;i++){const cloud=new THREE.Group();for(let n=0;n<3;n++){const puff=new THREE.Mesh(new THREE.IcosahedronGeometry(1,1),material);puff.scale.set(20+n*3,5+n*2,12);puff.position.set(n*18,Math.sin(n)*2,0);cloud.add(puff);}cloud.position.set(Math.sin(i*2.4)*450,100+(i%4)*15,(i-3)*90);this.clouds.add(cloud);}this.scene.add(this.clouds);
+    const material=new THREE.MeshBasicMaterial({color:'#f6f6e9',transparent:true,opacity:.6,depthWrite:false});
+    this.clouds=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),material,48);
+    const puff=new THREE.Object3D();
+    for(let i=0;i<16;i++)for(let n=0;n<3;n++){
+      puff.scale.set(20+n*3,5+n*2,12);
+      puff.position.set(Math.sin(i*2.4)*450+n*18,100+(i%4)*15+Math.sin(n)*2,(i-3)*90);
+      puff.updateMatrix();this.clouds.setMatrixAt(i*3+n,puff.matrix);
+    }
+    this.scene.add(this.clouds);
   }
   resize(){const w=this.canvas.clientWidth||window.innerWidth,h=this.canvas.clientHeight||window.innerHeight;this.camera.aspect=w/h;this.camera.updateProjectionMatrix();this.renderer.setSize(w,h,false);}
   start(){this.started=true;this.garage=false;this.paused=false;this.keys.clear();}
@@ -68,23 +76,21 @@ export class BusGame {
     this.world.update(this.z);this.clouds.position.z=Math.floor(this.z/1000)*1000;
     this.sun.position.set(this.x-70,height+100,this.z+80);this.sun.target.position.set(this.x,height,this.z+30);
     for(const item of this.peers.values()){const p=item.bus.group.position;const t=item.target;p.x=lerp(p.x,t.x,1-Math.exp(-10*dt));p.z=lerp(p.z,t.z,1-Math.exp(-10*dt));p.y=roadY(p.z);item.bus.group.rotation.y=angleLerp(item.bus.group.rotation.y,t.yaw,1-Math.exp(-10*dt));item.bus.animate(t.speed||0,dt);item.bus.group.visible=Math.abs(t.z-this.z)<1000;}
-    let targetPosition,targetLook;
-    const forward=new THREE.Vector3(Math.sin(this.yaw),0,Math.cos(this.yaw));const right=new THREE.Vector3(Math.cos(this.yaw),0,-Math.sin(this.yaw));
-    if(!this.started||this.garage){targetPosition=new THREE.Vector3(this.x,height+8.5,this.z).addScaledVector(forward,18).addScaledVector(right,16+Math.sin(this.elapsed*.13)*1.3);targetLook=new THREE.Vector3(this.x,height+1.9,this.z).addScaledVector(right,this.camera.aspect>1?-5:0);}
+    const targetPosition=this.targetPosition,targetLook=this.targetLook;
+    const forward=this.cameraForward.set(Math.sin(this.yaw),0,Math.cos(this.yaw));const right=this.cameraRight.set(Math.cos(this.yaw),0,-Math.sin(this.yaw));
+    if(!this.started||this.garage){targetPosition.set(this.x,height+8.5,this.z).addScaledVector(forward,18).addScaledVector(right,16+Math.sin(this.elapsed*.13)*1.3);targetLook.set(this.x,height+1.9,this.z).addScaledVector(right,this.camera.aspect>1?-5:0);}
     else if(this.cameraMode===1){
       // Seat position is in the imported bus's local coordinates. The driver's
       // seat is on -X: facing +Z, this is the right-hand side of the cabin.
-      this.bus.group.updateMatrixWorld(true);
-      targetPosition=this.bus.group.localToWorld(new THREE.Vector3(-.46,2.12,3.68));
-      targetLook=this.bus.group.localToWorld(new THREE.Vector3(-.46,1.9,13.68));
+      this.bus.group.localToWorld(targetPosition.set(-.46,2.12,3.68));
+      this.bus.group.localToWorld(targetLook.set(-.46,1.9,13.68));
     }
     else if(this.cameraMode===3){
-      this.bus.group.updateMatrixWorld(true);
-      targetPosition=this.bus.group.localToWorld(new THREE.Vector3(0,2.15,-4.18));
-      targetLook=this.bus.group.localToWorld(new THREE.Vector3(0,2.05,3.4));
+      this.bus.group.localToWorld(targetPosition.set(0,2.15,-4.18));
+      this.bus.group.localToWorld(targetLook.set(0,2.05,3.4));
     }
-    else if(this.cameraMode===2){targetPosition=new THREE.Vector3(this.x,height+6.8,this.z).addScaledVector(forward,-15).addScaledVector(right,13);targetLook=new THREE.Vector3(this.x,height+2,this.z).addScaledVector(forward,12);}
-    else{targetPosition=new THREE.Vector3(this.x,height+6.4+this.speed*.035,this.z).addScaledVector(forward,-17-this.speed*.07);targetLook=new THREE.Vector3(this.x,height+2.4,this.z).addScaledVector(forward,13+this.speed*.2);}
+    else if(this.cameraMode===2){targetPosition.set(this.x,height+6.8,this.z).addScaledVector(forward,-15).addScaledVector(right,13);targetLook.set(this.x,height+2,this.z).addScaledVector(forward,12);}
+    else{targetPosition.set(this.x,height+6.4+this.speed*.035,this.z).addScaledVector(forward,-17-this.speed*.07);targetLook.set(this.x,height+2.4,this.z).addScaledVector(forward,13+this.speed*.2);}
     const driverView=this.started&&!this.garage&&this.cameraMode===1;
     this.bus.cockpit.visible=true;animateCockpit(this.bus.cockpit,this.steering);
     const insideView=driverView||(this.started&&!this.garage&&this.cameraMode===3);
@@ -100,5 +106,5 @@ export class BusGame {
     this.camera.lookAt(this.lookAt);this.renderer.render(this.scene,this.camera);
     this.telemetryTime+=dt;if(this.telemetryTime>.1){this.telemetryTime=0;let nextStop=Math.ceil((this.z-70)/480)*480+70;const stopId=Math.round((nextStop-70)/480);if(this.collected.has(stopId))nextStop+=480;this.onTelemetry({speed:Math.round(Math.abs(this.speed)*3.6),distance:this.distance,stopDistance:Math.max(0,nextStop-this.z),throttle:this.throttle||0,braking:this.braking||0,offroad:!!this.offroad,passengers:this.passengers,heading:this.yaw,camera:['Chase','Driver','Scenic','Cabin'][this.cameraMode],quality:this.quality});}
   }
-  dispose(){this.disposed=true;cancelAnimationFrame(this.frameId);window.removeEventListener('keydown',this.onKeyDown);window.removeEventListener('keyup',this.onKeyUp);window.removeEventListener('blur',this.onBlur);this.resizeObserver.disconnect();this.world.dispose();this.bus.dispose();for(const item of this.peers.values())item.bus.dispose();this.clouds.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});this.renderer.dispose();}
+  dispose(){this.disposed=true;cancelAnimationFrame(this.frameId);window.removeEventListener('keydown',this.onKeyDown);window.removeEventListener('keyup',this.onKeyUp);window.removeEventListener('blur',this.onBlur);this.resizeObserver.disconnect();this.world.dispose();this.bus.dispose();for(const item of this.peers.values())item.bus.dispose();this.clouds.dispose();this.clouds.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose();});this.renderer.dispose();}
 }

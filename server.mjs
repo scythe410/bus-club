@@ -54,9 +54,17 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
       if (target !== root && !target.startsWith(root + path.sep)) {res.writeHead(404,headers);res.end();return;}
       try {if ((await stat(target)).isDirectory()) target = path.join(target,'index.html');}
       catch {if (!path.extname(pathname)) target = path.join(root,'index.html');}
+      const info = await stat(target);
+      const etag = `W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
+      const fingerprinted = path.relative(root,target).split(path.sep)[0] === 'assets';
+      const assetHeaders = {...headers,'Content-Type':MIME[path.extname(target)] || 'application/octet-stream','Cache-Control':fingerprinted?'public, max-age=31536000, immutable':'no-cache','ETag':etag};
+      if (req.headers['if-none-match']?.split(',').some(value=>value.trim()==='*'||value.trim().replace(/^W\//,'')===etag.replace(/^W\//,''))) {
+        res.writeHead(304,assetHeaders);res.end();return;
+      }
+      if (req.method === 'HEAD') {res.writeHead(200,{...assetHeaders,'Content-Length':info.size});res.end();return;}
       const body = await readFile(target);
-      res.writeHead(200,{...headers,'Content-Type':MIME[path.extname(target)] || 'application/octet-stream','Cache-Control':path.basename(target)==='index.html'?'no-cache':'public, max-age=3600'});
-      res.end(req.method === 'HEAD' ? undefined : body);
+      res.writeHead(200,{...assetHeaders,'Content-Length':body.length});
+      res.end(body);
     } catch {res.writeHead(404,headers);res.end('Not found');}
   });
   const wss = new WebSocketServer({noServer:true,maxPayload:MAX_PAYLOAD,perMessageDeflate:false});
@@ -64,7 +72,7 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
     if (req.url?.split('?')[0] !== '/ws' || wss.clients.size >= 512) {socket.destroy();return;}
     wss.handleUpgrade(req,socket,head,ws=>wss.emit('connection',ws,req));
   });
-  function send(ws,message) {if (ws.readyState===WebSocket.OPEN && ws.bufferedAmount < MAX_PAYLOAD * 4) ws.send(JSON.stringify(message));}
+  function send(ws,message) {if (ws.readyState===WebSocket.OPEN && ws.bufferedAmount < MAX_PAYLOAD * 4) ws.send(typeof message==='string'?message:JSON.stringify(message));}
   function playerData(player) {return {id:player.id,name:player.name,skin:player.skin,...player.state};}
   function publishRoom(room) {
     const players = [...room.players.values()].map(playerData);
@@ -124,7 +132,8 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
   const snapshots=setInterval(()=> {
     for (const room of rooms.values()) {
       const players=[...room.players.values()].map(p=>({id:p.id,...p.state}));
-      for (const p of room.players.values()) send(p.ws,{type:'snapshot',players,time:Date.now()});
+      const snapshot=JSON.stringify({type:'snapshot',players,time:Date.now()});
+      for (const p of room.players.values()) send(p.ws,snapshot);
     }
   },1000/15);
   const heartbeat=setInterval(()=> {

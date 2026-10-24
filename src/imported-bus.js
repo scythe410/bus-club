@@ -6,10 +6,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 let template;
+const busModelURL = new URL('./assets/sri-lanka-bus.glb', import.meta.url).href;
+const muralURL = new URL('./assets/nil-kirilli-mural.jpg', import.meta.url).href;
 // Fetch and batch once for the whole convoy. Keep the author's textures shared.
 export function loadBusModel() {
-  return template ||= new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/sri-lanka-bus.glb`).then(async ({ scene }) => {
-    const artwork = await new THREE.ImageLoader().loadAsync(`${import.meta.env.BASE_URL}textures/nil-kirilli-mural.jpg`).catch(() => null);
+  return template ||= Promise.all([
+    new GLTFLoader().loadAsync(busModelURL),
+    new THREE.ImageLoader().loadAsync(muralURL).catch(() => null),
+  ]).then(([{ scene }, artwork]) => {
     scene.rotation.y = Math.PI / 2; // The source faces -X; driving uses +Z.
     scene.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(scene);

@@ -70,7 +70,14 @@ Skin customization is saved on the current browser, including compressed uploade
 Terrain is deterministic and bounded to nine recycled tiles. Trees, rocks and roadside
 posts are instanced. Bus body meshes are merged by material. The Sri Lanka bus GLB adds a 5.9 MB asset download, cached and shared across convoy instances. Fog limits draw distance,
 pixel ratio is capped, quality controls shadows/resolution, and remote buses interpolate
-between network updates. The production JS download is approximately 172 KB gzip, plus the bus asset.
+between network updates. The production JS download is approximately 183 KB gzip, plus the bus asset.
+Three.js is a separate cached chunk; app-only releases replace about 31 KB gzip
+of application code. Model, mural, and Sinhala font sources live in `src/assets/`;
+Vite fingerprints their output URLs. `public/_headers` enables one-year immutable
+browser caching for `/assets/*` on Cloudflare. The model and mural fetch in parallel,
+Google Fonts no longer block page CSS, and clouds use one instanced draw.
+Terrain tiles share decoration geometry and release instance buffers when recycled.
+See `review/performance.md` for validation and remaining opportunities.
 
 This is a casual convoy prototype: driving is client-authoritative, remote buses do not
 collide, trees are decorative, and the driver camera uses a lightweight cockpit supplement. Room codes

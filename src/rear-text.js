@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 export const REAR_TEXT_MAX_LENGTH = 80;
 let fontReady;
+const rearTextFontURL = new URL('./assets/noto-sans-sinhala.ttf', import.meta.url).href;
 
 /** Keep native Sinhala grapheme clusters intact at the network's UTF-16 limit. */
 export function formatRearText(value) {
@@ -23,7 +24,7 @@ export function loadRearTextFont() {
   if (!fontReady) {
     fontReady = (async () => {
       if (typeof FontFace === 'undefined' || !document.fonts) return false;
-      const face = new FontFace('Bus Sinhala', `url("${import.meta.env.BASE_URL}fonts/noto-sans-sinhala.ttf")`, { weight: '600', style: 'normal', display: 'swap' });
+      const face = new FontFace('Bus Sinhala', `url("${rearTextFontURL}")`, { weight: '600', style: 'normal', display: 'swap' });
       document.fonts.add(await face.load());
       return true;
     })().catch(() => false);

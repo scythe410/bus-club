@@ -41,7 +41,7 @@ export class BusRoom extends DurableObject {
     this.flushTimer=null;
   }
   active() {return this.ctx.getWebSockets().filter(ws=>ws.readyState===1);}
-  send(ws,message) {try {if(ws.readyState===1)ws.send(JSON.stringify(message));}catch {this.remove(ws);}}
+  send(ws,message) {try {if(ws.readyState===1)ws.send(typeof message==='string'?message:JSON.stringify(message));}catch {this.remove(ws);}}
   async fetch(request) {
     if(request.headers.get('Upgrade')?.toLowerCase()!=='websocket')return new Response('WebSocket required',{status:426});
     const url=new URL(request.url),code=url.searchParams.get('room'),intent=url.searchParams.get('intent');
@@ -81,8 +81,10 @@ export class BusRoom extends DurableObject {
     if(this.flushTimer!==null)return;
     this.flushTimer=setTimeout(()=>{
       this.flushTimer=null;
-      const players=this.active().map(ws=>ws.deserializeAttachment()).filter(p=>p?.joined).map(p=>({id:p.id,...p.state}));
-      for(const ws of this.active())if(ws.deserializeAttachment()?.joined)this.send(ws,{type:'snapshot',players,time:Date.now()});
+      const joined=this.active().map(ws=>({ws,data:ws.deserializeAttachment()})).filter(p=>p.data?.joined);
+      const players=joined.map(({data})=>({id:data.id,...data.state}));
+      const snapshot=JSON.stringify({type:'snapshot',players,time:Date.now()});
+      for(const {ws} of joined)this.send(ws,snapshot);
     },66);
   }
   webSocketMessage(ws,raw) {
