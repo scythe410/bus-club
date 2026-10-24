@@ -1,10 +1,11 @@
 import {test, before, after} from 'node:test';
 import assert from 'node:assert/strict';
 import {once} from 'node:events';
+import {fileURLToPath} from 'node:url';
 import {WebSocket} from 'ws';
 import {createBusServer} from '../server.mjs';
 let app,base;
-before(async()=>{app=createBusServer();app.server.listen(0,'127.0.0.1');await once(app.server,'listening');base=`ws://127.0.0.1:${app.server.address().port}/ws`;});
+before(async()=>{app=createBusServer({dist:fileURLToPath(new URL('../public',import.meta.url))});app.server.listen(0,'127.0.0.1');await once(app.server,'listening');base=`ws://127.0.0.1:${app.server.address().port}/ws`;});
 after(async()=>await app.close());
 async function client() {
  const ws=new WebSocket(base);const messages=[];const listeners=new Set();
