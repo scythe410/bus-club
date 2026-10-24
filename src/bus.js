@@ -65,7 +65,7 @@ export class Bus {
       model.traverse(mesh=>{
         if(mesh.userData.wheel){mesh.userData.radius*=10.934/9.8;this.wheels.push(mesh);}
         if(mesh.material?.name==='Material.006')this.accentMaterial=mesh.material;
-        if(['Material_1.003','Material.011'].includes(mesh.material?.name)){
+        if(['Material_1.003','Material.011'].includes(mesh.material?.name)||mesh.name==='Nil Kirilli white'){
           mesh.material.emissive.set('#ffe7a0');
           mesh.material.emissiveIntensity=this.lampMaterial.emissiveIntensity;
           if(!this.headlights)this.headlights=[];
@@ -73,11 +73,11 @@ export class Bus {
         }
       });
       for(const panel of this.sidePanels){
-        panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,.55);
-        panel.position.set(Math.sign(panel.position.x)*1.035,1.12,.2);
+        panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,.2);
+        panel.position.set(panel.position.x>0?1.035:-.944,1.37,.2);
       }
       this.destination.geometry.dispose();this.destination.geometry=new THREE.PlaneGeometry(1.7,.24);
-      this.destination.position.set(0,2.53,4.53);
+      this.destination.position.set(.045,2.59,4.566);
       this.rearPanel.useImportedModel();
       this.setSkin(this.skin);
       return true;
@@ -89,7 +89,9 @@ export class Bus {
     for(const t of textures)t.dispose();for(const m of mats)m.dispose();for(const g of geoms)g.dispose();
   }
   setSkin(next){
-    Object.assign(this.skin,next);this.rearPanel.setSkin(this.skin);const s=this.skin;if(!this.importedModel)this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(s.accent);
+    Object.assign(this.skin,next);this.rearPanel.setSkin(this.skin);const s=this.skin;
+    if(this.importedModel&&this.panelImageMode!==Boolean(s.image)){this.panelImageMode=Boolean(s.image);for(const panel of this.sidePanels){panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,s.image?.55:.2);}}
+    if(!this.importedModel)this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(this.importedModel?'#0876dc':s.accent);
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=160;const c=canvas.getContext('2d');
     c.fillStyle=s.color;c.fillRect(0,0,1024,160);c.fillStyle=s.accent;
     if(s.pattern==='wave'){c.beginPath();c.moveTo(0,85);for(let x=0;x<=1024;x+=8)c.lineTo(x,85+Math.sin(x/130)*35);c.lineTo(1024,160);c.lineTo(0,160);c.fill();}

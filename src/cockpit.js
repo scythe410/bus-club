@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 export function createCockpit() {
   const cockpit = new THREE.Group();
   cockpit.name = 'Driver cockpit';
-  const trim = new THREE.MeshStandardMaterial({ color: '#222b29', roughness: .94 });
+  const trim = new THREE.MeshStandardMaterial({ color: '#103b75', roughness: .94 });
   const metal = new THREE.MeshStandardMaterial({ color: '#65716c', roughness: .62, metalness: .35 });
   const rubber = new THREE.MeshStandardMaterial({ color: '#111917', roughness: .92 });
 
@@ -17,7 +17,8 @@ export function createCockpit() {
     geometry.translate(x, y, z);
     dashboardParts.push(geometry);
   };
-  block(1.04, .12, .32, -.46, 1.52, 4.24);
+  block(1.87, .12, .38, .02, 1.52, 4.24);
+  block(1.87, .035, .4, .02, 1.60, 4.24);
   block(.68, .22, .14, -.46, 1.68, 4.30);
   const dashboard = new THREE.Mesh(mergeGeometries(dashboardParts), trim);
   dashboardParts.forEach(geometry => geometry.dispose());
@@ -72,7 +73,19 @@ export function createCockpit() {
   steeringMount.add(column);
   cockpit.add(steeringMount);
   cockpit.userData.wheel = wheel;
-  cockpit.visible = false;
+  // Colorful dashboard cushions visible in the front reference.
+  const cushions = ['#ec45aa', '#7f39c7', '#f7d73b'];
+  for (let i = 0; i < 5; i++) {
+    const cushion = new THREE.Mesh(new THREE.SphereGeometry(.105, 10, 7), new THREE.MeshStandardMaterial({color:cushions[i%3],roughness:.9}));
+    cushion.scale.set(1,.85,.55); cushion.position.set(.04+i*.17,1.69,4.25); cockpit.add(cushion);
+  }
+  const chrome = new THREE.MeshStandardMaterial({color:'#c3ddea',metalness:.65,roughness:.28});
+  const dashRail = new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,1.84,8),chrome);
+  dashRail.rotation.z=Math.PI/2;dashRail.position.set(.02,1.61,4.01);cockpit.add(dashRail);
+  const lever = new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,.44,8),chrome);
+  lever.position.set(.04,1.35,3.8);lever.rotation.x=-.18;cockpit.add(lever);
+  const knob=new THREE.Mesh(new THREE.SphereGeometry(.035,10,6),rubber);knob.position.set(.04,1.57,3.76);cockpit.add(knob);
+  cockpit.visible = true;
   return cockpit;
 }
 

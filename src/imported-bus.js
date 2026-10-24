@@ -1,11 +1,15 @@
 import * as THREE from 'three';
+import { createNilKirilliAtlas, createNilKirilliSigns } from './nil-kirilli-livery.js';
+import { createNilKirilliDetails } from './nil-kirilli-details.js';
+import { createNilKirilliInterior } from './nil-kirilli-interior.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 let template;
 // Fetch and batch once for the whole convoy. Keep the author's textures shared.
 export function loadBusModel() {
-  return template ||= new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/sri-lanka-bus.glb`).then(({ scene }) => {
+  return template ||= new GLTFLoader().loadAsync(`${import.meta.env.BASE_URL}models/sri-lanka-bus.glb`).then(async ({ scene }) => {
+    const artwork = await new THREE.ImageLoader().loadAsync(`${import.meta.env.BASE_URL}textures/nil-kirilli-mural.jpg`).catch(() => null);
     scene.rotation.y = Math.PI / 2; // The source faces -X; driving uses +Z.
     scene.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(scene);
@@ -14,10 +18,22 @@ export function loadBusModel() {
     const normalize = new THREE.Matrix4().makeScale(scale, scale, scale)
       .multiply(new THREE.Matrix4().makeTranslation(-center.x, -bounds.min.y + .025 / scale, -center.z));
     const group = new THREE.Group(), batches = new Map();
+    const atlasMaterial = new Set();
     scene.traverse(mesh => {
       if (!mesh.isMesh) return;
       const geometry = mesh.geometry.clone().applyMatrix4(normalize.clone().multiply(mesh.matrixWorld));
       const mat = mesh.material;
+      // Replace the source's simple seating with the reference cabin.
+      if (['Material.007', 'Material_1.002'].includes(mat.name)) { geometry.dispose(); return; }
+      if (mat.name === 'Material.008' && !atlasMaterial.has(mat)) {
+        mat.map = createNilKirilliAtlas(mat.map.image, artwork);
+        mat.metalnessMap = null; mat.roughnessMap = null;
+        mat.metalness = .18; mat.roughness = .42;
+        mat.alphaTest = .4; mat.needsUpdate = true; atlasMaterial.add(mat);
+      }
+      if (mat.name === 'Material.006' || mat.name === 'Material.002') mat.color.set('#0876dc');
+      if (mat.name === 'Material.003') { mat.color.set('#b5deed'); mat.opacity = .16; mat.depthWrite = false; }
+      if (mat.name === 'Material.001') { mat.color.set('#c3d8e3'); mat.metalness = .7; mat.roughness = .24; }
       if (mesh.name.startsWith('object_rad_1')) {
         geometry.computeBoundingBox();
         const pivot = geometry.boundingBox.getCenter(new THREE.Vector3());
@@ -38,6 +54,7 @@ export function loadBusModel() {
       geometries.forEach(g => g.dispose());
     }
     scene.traverse(mesh => { if (mesh.isMesh) mesh.geometry.dispose(); });
+    group.add(createNilKirilliDetails(), createNilKirilliSigns(artwork), createNilKirilliInterior(artwork));
     return group;
   }).catch(error => { template = null; throw error; });
 }

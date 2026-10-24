@@ -2,8 +2,8 @@ import { icon } from './icons.js';
 import { formatRearText, loadRearTextFont } from './rear-text.js';
 import { attachUIAccessibility } from './ui-accessibility.js';
 
-const defaults = { name: 'pookie', destination: '99', skin: { color: '#e9d7ad', accent: '#e86d48', pattern: 'stripe', image: null, rearText: '' }, environment: 'coast', time: 'day', quality: 'auto' };
-const presets = [ ['Sunset express', '#e9d7ad', '#e86d48'], ['Forest service', '#52745d', '#d9ee89'], ['Ocean liner', '#a3cbd0', '#f4eee1'], ['Berry nice', '#b57a91', '#f1d897'] ];
+const defaults = { name: 'pookie', destination: '99', skin: { color: '#148ddd', accent: '#e9d399', pattern: 'stripe', image: null, rearText: '' }, environment: 'coast', time: 'day', quality: 'auto' };
+const presets = [ ['Nil Kirilli', '#148ddd', '#e9d399'], ['Forest service', '#52745d', '#d9ee89'], ['Ocean liner', '#a3cbd0', '#f4eee1'], ['Berry nice', '#b57a91', '#f1d897'] ];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function createUI(callbacks = {}) {

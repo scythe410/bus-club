@@ -86,10 +86,23 @@ The default player and convoy vehicle uses **Sri Lanka 3D Bus model** by
 See `public/models/ATTRIBUTION.md` for adaptations and credit details.
 
 The GLB is served locally; gameplay does not require a Sketchfab login.
-Its original body texture is retained. Color/pattern/upload controls customize
-added side panels, Accent recolors the bumper, and destination text updates the
-front sign. Other model parts are fixed. Wheels animate while driving, and the
-classic procedural bus remains a fallback if the GLB cannot load.
+The model is adapted as **Nil Kirilli / Blue Chick 02**: blue airbrushed livery,
+Sinhala signs, chrome grille, four round headlights, roof lamps, articulated gold
+mirrors, rear lamp banks, ladder, spoiler and chrome rails. The cabin includes blue
+2+2 seats, navy curtains, white valances, chrome racks, speakers and colored roof
+lights. The local cockpit adds instruments, steering, gear lever and dashboard
+cushions. Press **C** to cycle Chase → Driver → Scenic → Cabin.
+
+Color/pattern/upload controls customize the side name panels; the reference body
+and bumper stay blue. Destination text and the rear message remain editable.
+Wheels animate while driving, and the classic procedural bus remains a fallback
+if the GLB cannot load. The additional original mural texture is about 920 KB.
+
+This is a reference-informed recreation, not an exact scan. Small mural details,
+seat upholstery and hidden geometry are interpreted. See
+`review/nil-kirilli-reference.md` for sources and limitations. With Vite running,
+open `/review/model-preview.html` for orbit, front, side, rear, driver and cabin
+views with a day/night toggle.
 
 ## UI and handling
 

@@ -10,3 +10,10 @@ Bus Club rotate, scale and center the model, batch stationary meshes, animate th
 wheels, adjust material response, add editable livery panels and a destination
 sign, and recolor the bumper accent. The underlying mesh is not rigged for doors,
 mirrors, seating or other independently configurable parts.
+
+Nil Kirilli / Blue Chick 02 adaptation (2026): runtime UV repaint, window alpha
+cutouts, replacement blue passenger seating, curtains, roof liner and lighting,
+chrome/gold front equipment, mirrors, rear lamps/ladder/trim, Sinhala signage,
+and an original AI-generated blue airbrush mural. The original GLB file remains
+unmodified. Reference sources and approximation limits are documented in
+`review/nil-kirilli-reference.md`.
