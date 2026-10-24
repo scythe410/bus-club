@@ -7,7 +7,7 @@ const endpoint=process.argv[2]??'wss://bus-club-rooms.neuralshift-games.workers.
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const code=()=>[...randomBytes(6)].map(n=>alphabet[n%32]).join('');
 const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==';
-const profile=(name,image=null)=>({name,skin:{color:'#ff8800',accent:'#ffffff',pattern:'stripe',name:'Smoke Express',destination:'ELLA',image}});
+const profile=(name,image=null)=>({name,skin:{color:'#ff8800',accent:'#ffffff',pattern:'stripe',name:'Smoke Express',destination:'ELLA',rearText:'සුබ ගමන්\nSafe travels',image}});
 const clients=[];
 async function connect(room,intent,name,image=null){
  const url=new URL(endpoint);url.searchParams.set('room',room);url.searchParams.set('intent',intent);
@@ -27,6 +27,7 @@ try {
  await b.wait('snapshot',m=>m.players.some(p=>p.id===first.selfId&&p.x===123));
  const c=await connect(roomCode,'join','Smoke C');const late=await c.wait('room',m=>m.players.length===3);
  assert.equal(late.players.find(p=>p.id===first.selfId)?.skin.image,png,'Late joiner receives full image skin');
+ assert.equal(late.players.find(p=>p.id===first.selfId)?.skin.rearText,'සුබ ගමන්\nSafe travels','Late joiner receives bilingual rear message');
  assert.equal(late.players.find(p=>p.id===first.selfId)?.x,123,'Late joiner receives current position');
  const cursor=c.cursor();b.send({type:'profile',profile:profile('Smoke B Updated',png)});
  await c.wait('room',m=>m.players.some(p=>p.name==='Smoke B Updated'&&p.skin.image===png),cursor);

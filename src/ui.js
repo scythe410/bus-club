@@ -1,7 +1,8 @@
 import { icon } from './icons.js';
+import { formatRearText, loadRearTextFont } from './rear-text.js';
 import { attachUIAccessibility } from './ui-accessibility.js';
 
-const defaults = { name: 'pookie', destination: '99', skin: { color: '#e9d7ad', accent: '#e86d48', pattern: 'stripe', image: null }, environment: 'coast', time: 'day', quality: 'auto' };
+const defaults = { name: 'pookie', destination: '99', skin: { color: '#e9d7ad', accent: '#e86d48', pattern: 'stripe', image: null, rearText: '' }, environment: 'coast', time: 'day', quality: 'auto' };
 const presets = [ ['Sunset express', '#e9d7ad', '#e86d48'], ['Forest service', '#52745d', '#d9ee89'], ['Ocean liner', '#a3cbd0', '#f4eee1'], ['Berry nice', '#b57a91', '#f1d897'] ];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -12,6 +13,7 @@ export function createUI(callbacks = {}) {
   if(profile.name==='Road wanderer')profile.name=defaults.name;
   if(profile.destination==='THE SCENIC ROUTE')profile.destination=defaults.destination;
   profile.skin.color ||= profile.skin.body || defaults.skin.color;
+  profile.skin.rearText = formatRearText(profile.skin.rearText);
   profile.skin.name = profile.name;
   profile.skin.destination = profile.destination;
   let driving = false, paused = false, roomState = {}, toastTimer, sound = false;
@@ -26,6 +28,7 @@ export function createUI(callbacks = {}) {
 
       <label class="field"><span>Driver name</span><input id="driver-name" type="text" maxlength="24" autocomplete="nickname" value="${escape(profile.name)}" /></label>
       <label class="field"><span>Destination sign</span><input id="destination" type="text" maxlength="28" value="${escape(profile.destination)}" /></label>
+      <label class="field rear-message-field"><span>Rear panel message</span><textarea id="rear-text" rows="2" maxlength="80" aria-describedby="rear-text-help" placeholder="Your words, on the back of your bus">${escape(profile.skin.rearText)}</textarea><small id="rear-text-help">Sinhala / English · Up to 2 lines</small></label>
       <span class="field-label" style="margin-top:14px">Choose a livery</span><div class="presets">${presets.map(([name,color,accent],i)=>`<button class="preset" data-preset="${i}" style="--body:${color};--accent:${accent}" aria-label="${name}" title="${name}" aria-pressed="${profile.skin.color===color}"></button>`).join('')}</div>
       <div class="colors"><label class="color-field"><input id="body-color" type="color" value="${escape(profile.skin.color)}" />Livery</label><label class="color-field"><input id="accent-color" type="color" value="${escape(profile.skin.accent)}" />Accent</label><label class="field" style="flex:1;margin:0"><span class="sr-only" hidden>Pattern</span><select id="pattern" aria-label="Bus livery pattern"><option value="stripe">Classic stripe</option><option value="wave">Coastal wave</option><option value="retro">Retro bands</option><option value="solid">Solid color</option></select></label></div>
       <div class="upload-row"><button class="upload" id="upload-skin" type="button">${icon('upload')}<span>Upload side skin <span class="upload-format">PNG / JPG / WebP</span></span></button><input id="skin-upload" type="file" accept="image/png,image/jpeg,image/webp" hidden /><button class="text-button" id="remove-skin" ${profile.skin.image?'':'hidden'}>Remove</button></div>
@@ -59,6 +62,10 @@ export function createUI(callbacks = {}) {
   ['environment','time'].forEach(group=>{markGroup(group);all(`[data-group="${group}"] button`).forEach(button=>button.addEventListener('click',()=>{profile[group]=button.dataset.value;markGroup(group);save();invoke(group==='time'?'onTime':'onEnvironment',profile[group]);}));});
   $('#driver-name').addEventListener('input',event=>{profile.name=event.target.value.slice(0,24);emitSkin();});
   $('#destination').addEventListener('input',event=>{profile.destination=event.target.value.slice(0,28);emitSkin();});
+  const updateRearText = event => {if(event.isComposing)return;const value=formatRearText(event.target.value);if(value!==event.target.value)event.target.value=value;profile.skin.rearText=value;emitSkin();};
+  $('#rear-text').addEventListener('input',updateRearText);
+  $('#rear-text').addEventListener('compositionend',updateRearText);
+  loadRearTextFont();
   $('#body-color').addEventListener('input',event=>{profile.skin.color=event.target.value;markPresets();emitSkin();});
   $('#accent-color').addEventListener('input',event=>{profile.skin.accent=event.target.value;markPresets();emitSkin();});
   $('#pattern').addEventListener('change',event=>{profile.skin.pattern=event.target.value;emitSkin();});

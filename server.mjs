@@ -9,7 +9,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 export const MAX_IMAGE_BYTES = 192 * 1024;
 const MAX_PAYLOAD = MAX_IMAGE_BYTES + 4096;
 const ROOM_SIZE = 8;
-const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.glb':'model/gltf-binary'};
+const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.ttf':'font/ttf','.glb':'model/gltf-binary'};
 
 const DEFAULT_SKIN = {color:'#f4a261', secondary:'#fff5df', pattern:'stripe', text:'BUS CLUB', image:null};
 function validProfile(input = {}) {
@@ -24,7 +24,7 @@ function validProfile(input = {}) {
     if (typeof value !== 'string') throw Error('Skin properties must be text.');
     if (/image|decal|livery/i.test(key) && value.startsWith('data:')) {
       if (value.length > MAX_IMAGE_BYTES || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]*={0,2}$/.test(value)) throw Error('Use a PNG, JPEG or WebP skin smaller than 192 KB.');
-    } else if (value.length > 80 || /[\u0000-\u001f]/.test(value)) throw Error('Skin text is too long.');
+    } else if (key==='rearText' ? value.length>80 || /[\u0000-\u0009\u000b-\u001f]/.test(value) || value.split('\n').length>2 : value.length>80 || /[\u0000-\u001f]/.test(value)) throw Error('Skin text is too long or contains invalid line breaks.');
     clean[key] = value;
   }
   return {name,skin:clean};

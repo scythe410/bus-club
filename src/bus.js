@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createBusModel } from './imported-bus.js';
+import { RearTextPanel } from './rear-text.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const box = (w,h,d,mat,x=0,y=0,z=0) => {const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;};
@@ -7,7 +8,7 @@ const material=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness
 
 export class Bus {
   constructor(skin={}) {
-    this.group=new THREE.Group();this.wheels=[];this.textures=[];this.skin={color:'#e4a44b',accent:'#f5eed9',pattern:'stripe',name:'COAST CLUB',destination:'THE LONG WAY HOME',...skin};
+    this.group=new THREE.Group();this.wheels=[];this.textures=[];this.skin={color:'#e4a44b',accent:'#f5eed9',pattern:'stripe',rearText:'',name:'COAST CLUB',destination:'THE LONG WAY HOME',...skin};
     this.bodyMaterial=material(this.skin.color);this.accentMaterial=material(this.skin.accent);
     const dark=material('#172e34'), glass=material('#264a52',{metalness:.25,roughness:.22}), chrome=material('#c3c6b9',{metalness:.6}), rubber=material('#1b282c');
     this.group.add(box(2.75,2.8,9.4,this.bodyMaterial,0,1.96,0));
@@ -45,6 +46,7 @@ export class Bus {
     this.sidePanels=[];
     for(const side of [-1,1]){const panel=new THREE.Mesh(new THREE.PlaneGeometry(8.25,1.07),new THREE.MeshStandardMaterial({roughness:.8}));panel.position.set(side*1.386,1.28,0);panel.rotation.y=side*Math.PI/2;this.group.add(panel);this.sidePanels.push(panel);}
     this.destination=new THREE.Mesh(new THREE.PlaneGeometry(2.43,.4),new THREE.MeshStandardMaterial({roughness:.7,emissive:'#fff1cb',emissiveIntensity:.3}));this.destination.position.set(0,3.48,4.74);this.group.add(this.destination);
+    this.rearPanel=new RearTextPanel();this.group.add(this.rearPanel.mesh);
     this.setSkin(this.skin);
     this.ready=this.loadModel();
   }
@@ -53,7 +55,7 @@ export class Bus {
       const model=await createBusModel();
       if(this.disposed){this.disposeModel(model);return;}
       // Retain editable signs and liveries while replacing the procedural shell.
-      const retained=new Set([...this.sidePanels,this.destination,this.cockpit]);
+      const retained=new Set([...this.sidePanels,this.destination,this.cockpit,this.rearPanel.mesh]);
       for(const child of [...this.group.children]){
         if(retained.has(child))continue;
         this.group.remove(child);this.disposeModel(child);
@@ -76,6 +78,7 @@ export class Bus {
       }
       this.destination.geometry.dispose();this.destination.geometry=new THREE.PlaneGeometry(1.7,.24);
       this.destination.position.set(0,2.53,4.53);
+      this.rearPanel.useImportedModel();
       this.setSkin(this.skin);
       return true;
     }catch(error){console.warn('Using the classic bus because the Sri Lanka model could not load.',error);return false;}
@@ -86,7 +89,7 @@ export class Bus {
     for(const t of textures)t.dispose();for(const m of mats)m.dispose();for(const g of geoms)g.dispose();
   }
   setSkin(next){
-    Object.assign(this.skin,next);const s=this.skin;if(!this.importedModel)this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(s.accent);
+    Object.assign(this.skin,next);this.rearPanel.setSkin(this.skin);const s=this.skin;if(!this.importedModel)this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(s.accent);
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=160;const c=canvas.getContext('2d');
     c.fillStyle=s.color;c.fillRect(0,0,1024,160);c.fillStyle=s.accent;
     if(s.pattern==='wave'){c.beginPath();c.moveTo(0,85);for(let x=0;x<=1024;x+=8)c.lineTo(x,85+Math.sin(x/130)*35);c.lineTo(1024,160);c.lineTo(0,160);c.fill();}
@@ -108,5 +111,5 @@ export class Bus {
     if(!s.image){this.loadedImage=null;this.imageVersion=(this.imageVersion||0)+1;}
   }
   animate(speed,dt){for(const wheel of this.wheels)wheel.rotation.x+=speed*dt/(wheel.userData.radius||.6);for(const mat of this.headlights||[])mat.emissiveIntensity=this.lampMaterial.emissiveIntensity;}
-  dispose(){this.disposed=true;this.disposeModel(this.group);this.bodyMaterial.dispose();this.lampMaterial.dispose();}
+  dispose(){this.disposed=true;this.rearPanel.dispose();this.disposeModel(this.group);this.bodyMaterial.dispose();this.lampMaterial.dispose();}
 }

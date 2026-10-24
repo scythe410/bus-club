@@ -14,7 +14,7 @@ function profile(input) {
     if(typeof value!=='string')throw Error('Skin properties must be text.');
     if(/image|decal|livery/i.test(key)&&value.startsWith('data:')) {
       if(value.length>192*1024 || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]*={0,2}$/.test(value))throw Error('Use a PNG, JPEG or WebP skin smaller than 192 KB.');
-    } else if(value.length>80 || /[\u0000-\u001f]/.test(value))throw Error('Skin text is too long.');
+    } else if(key==='rearText' ? value.length>80 || /[\u0000-\u0009\u000b-\u001f]/.test(value) || value.split('\n').length>2 : value.length>80 || /[\u0000-\u001f]/.test(value))throw Error('Skin text is too long or contains invalid line breaks.');
     skin[key]=value;
   }
   return {name,skin};

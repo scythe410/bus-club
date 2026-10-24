@@ -180,3 +180,6 @@ input[type=text]:hover,select:hover{border-color:#ffffff55}
   #drive:hover>.icon{transform:translate(1px,-1px)}
   #drive:active{transform:translateY(0)}
 }
+
+/* Match the actual bus lettering while composing either language. */
+.rear-message-field textarea{display:block;width:100%;resize:vertical;min-height:76px;max-height:150px;border:1px solid var(--line);border-radius:7px;background:#ffffff05;color:var(--cream);padding:10px 11px;font:500 13px/1.65 "Bus Sinhala",system-ui,sans-serif;pointer-events:auto}.rear-message-field textarea::placeholder{color:#8e9a8e;font-size:11px}.rear-message-field textarea:focus-visible{outline:2px solid var(--lime);outline-offset:4px}.rear-message-field small{display:block;color:var(--muted);font-size:10px;line-height:1.5;margin-top:6px}

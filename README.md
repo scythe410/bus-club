@@ -16,7 +16,12 @@ WASD/arrows drive; S/down brakes, then reverses. Space brakes, C cycles cameras,
 R returns to the road, H honks when sound is enabled, and Escape opens the garage.
 Touch controls appear on phones. Graphics quality can be reduced in the garage.
 The bus engine starts when you click Drive, with idle, acceleration and gear changes.
-Use the music-note button to mute; your sound preference is remembered.
+Use the sound button to mute; your sound preference is remembered.
+
+The garage’s **Rear panel message** supports Sinhala and English, including mixed text
+on two lines (up to 80 characters). Messages are saved and shared with your convoy.
+The bundled Noto Sans Sinhala font is licensed under the SIL Open Font License;
+see `public/fonts/OFL.txt`.
 
 ## Develop
 
