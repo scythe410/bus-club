@@ -6,7 +6,7 @@ No Slow Roads code, assets, or extracted data is included.
 
 ## Play
 
-Open the game, customize a bus, and select **Let's take a drive**. Use **Invite friends**
+Open the game, set your bus signs, and select **Let's take a drive**. Use **Invite friends**
 to create a room. Send **Copy invite link** to friends; the link joins the same convoy.
 Everyone then starts their own bus. Friends spawn side by side near the current convoy,
 including when the first driver has already left the starting area.
@@ -52,7 +52,11 @@ positions, profile edits, host departure and room cleanup, then disconnects ever
 ## Hosting
 
 The frontend and multiplayer backend are served by the `bus-club-rooms` Cloudflare Worker at
-`https://bus-club-rooms.neuralshift-games.workers.dev`.
+`https://issarahatayanna.gay` (also `www.issarahatayanna.gay`).
+The fallback address is `https://bus-club-rooms.neuralshift-games.workers.dev`.
+Cloudflare Web Analytics is enabled for the domain with automatic beacon injection.
+Traffic/security analytics and Worker request logs are available in Cloudflare;
+Worker log sampling is set to 100%.
 `worker/index.js` exports `BusRoom`; bind `BUS_ROOM` to that class and create a SQLite
 Durable Object migration (`new_sqlite_classes: ["BusRoom"]`, tag `v1`).
 The committed Wrangler configuration includes the built `dist/` static assets.
@@ -100,8 +104,8 @@ mirrors, rear lamp banks, ladder, spoiler and chrome rails. The cabin includes b
 lights. The local cockpit adds instruments, steering, gear lever and dashboard
 cushions. Press **C** to cycle Chase → Driver → Scenic → Cabin.
 
-Color/pattern/upload controls customize the side name panels; the reference body
-and bumper stay blue. Destination text and the rear message remain editable.
+The reference body and bumper stay blue. Driver name, destination text and the
+rear message remain editable; livery and side-skin controls are no longer shown.
 Wheels animate while driving, and the classic procedural bus remains a fallback
 if the GLB cannot load. The additional original mural texture is about 920 KB.
 

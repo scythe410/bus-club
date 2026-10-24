@@ -17,8 +17,6 @@ export function attachUIAccessibility(root) {
   root.querySelector('[data-group="environment"]')?.setAttribute('aria-label', 'Scenery');
   root.querySelector('[data-group="time"]')?.setAttribute('role', 'group');
   root.querySelector('[data-group="time"]')?.setAttribute('aria-label', 'Time of day');
-  root.querySelector('.presets')?.setAttribute('role', 'group');
-  root.querySelector('.presets')?.setAttribute('aria-label', 'Livery presets');
   root.querySelector('#session-status')?.setAttribute('role', 'status');
   root.querySelector('#room-summary')?.setAttribute('role', 'status');
   root.querySelector('#toast')?.setAttribute('aria-atomic', 'true');

@@ -4,7 +4,6 @@ import { formatRearText, loadRearTextFont } from './rear-text.js';
 import { attachUIAccessibility } from './ui-accessibility.js';
 
 const defaults = { name: 'pookie', destination: '99', skin: { color: '#148ddd', accent: '#e9d399', pattern: 'stripe', image: null, rearText: '' }, environment: 'coast', time: 'day', quality: 'auto' };
-const presets = [ ['Nil Kirilli', '#148ddd', '#e9d399'], ['Forest service', '#52745d', '#d9ee89'], ['Ocean liner', '#a3cbd0', '#f4eee1'], ['Berry nice', '#b57a91', '#f1d897'] ];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function createUI(callbacks = {}) {
@@ -30,9 +29,6 @@ export function createUI(callbacks = {}) {
       <label class="field"><span>Driver name</span><input id="driver-name" type="text" maxlength="24" autocomplete="nickname" value="${escape(profile.name)}" /></label>
       <label class="field"><span>Destination sign</span><input id="destination" type="text" maxlength="28" value="${escape(profile.destination)}" /></label>
       <label class="field rear-message-field"><span>Rear panel message</span><textarea id="rear-text" rows="2" maxlength="80" aria-describedby="rear-text-help" placeholder="Your words, on the back of your bus">${escape(profile.skin.rearText)}</textarea><small id="rear-text-help">Sinhala / English · Up to 2 lines</small></label>
-      <span class="field-label" style="margin-top:14px">Choose a livery</span><div class="presets">${presets.map(([name,color,accent],i)=>`<button class="preset" data-preset="${i}" style="--body:${color};--accent:${accent}" aria-label="${name}" title="${name}" aria-pressed="${profile.skin.color===color}"></button>`).join('')}</div>
-      <div class="colors"><label class="color-field"><input id="body-color" type="color" value="${escape(profile.skin.color)}" />Livery</label><label class="color-field"><input id="accent-color" type="color" value="${escape(profile.skin.accent)}" />Accent</label><label class="field" style="flex:1;margin:0"><span class="sr-only" hidden>Pattern</span><select id="pattern" aria-label="Bus livery pattern"><option value="stripe">Classic stripe</option><option value="wave">Coastal wave</option><option value="retro">Retro bands</option><option value="solid">Solid color</option></select></label></div>
-      <div class="upload-row"><button class="upload" id="upload-skin" type="button">${icon('upload')}<span>Upload side skin <span class="upload-format">PNG / JPG / WebP</span></span></button><input id="skin-upload" type="file" accept="image/png,image/jpeg,image/webp" hidden /><button class="text-button" id="remove-skin" ${profile.skin.image?'':'hidden'}>Remove</button></div>
       <hr class="divider" /><div class="section-heading" style="margin-top:0"><span>Find your kind of road</span></div>
       <div class="segmented" data-group="environment"><button data-value="coast">${icon('sea-waves')}<span>The coast</span></button><button data-value="highlands">${icon('pine-tree')}<span>Highlands</span></button></div>
       <div class="segmented time-row" data-group="time"><button data-value="day">${icon('sun-light')}<span>Daylight</span></button><button data-value="sunset">${icon('sea-and-sun')}<span>Sunset</span></button><button data-value="night">${icon('half-moon')}<span>Night</span></button></div>
@@ -49,7 +45,7 @@ export function createUI(callbacks = {}) {
     <div class="controls-legend" id="controls" hidden>Drive <span class="key">W A S D</span> <span class="key">↑ ← ↓ →</span><br>Brake <span class="key">SPACE</span> &nbsp; Camera <span class="key">C</span><br>Reset <span class="key">R</span> &nbsp; Garage <span class="key">ESC</span><br>Meme sounds <span class="key">1–9</span></div>
     <div class="touch-controls" id="touch-controls" hidden><div class="touch-group"><button data-action="left" aria-label="Steer left">${icon('arrow-left')}</button><button data-action="right" aria-label="Steer right">${icon('arrow-right')}</button></div><div class="touch-group"><button data-action="brake" aria-label="Brake">${icon('pause')}</button><button data-action="throttle" aria-label="Accelerate">${icon('arrow-up')}</button></div></div>
     <div class="modal-backdrop" id="pause-modal" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="pause-title"><div class="eyebrow">A MOMENT TO BREATHE</div><h2 id="pause-title">Enjoy the view.</h2><p>Your bus is paused. Your friends can keep exploring while you take a break.</p><button class="drive-button" id="resume">${icon('play')}<span>Back to the road</span></button><button class="text-button" id="pause-garage" style="width:100%;margin-top:16px">Open the garage</button></section></div>
-    <div class="modal-backdrop" id="help-modal" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title"><div class="eyebrow">THE OPEN ROAD, EXPLAINED</div><h2 id="help-title">Easy does it.</h2><p>Drive, discover bus stops, and make a convoy with your friends. Your livery travels with you.</p><div class="help-row"><span>Accelerate / reverse</span><span>W / S or ↑ / ↓</span></div><div class="help-row"><span>Steer</span><span>A / D or ← / →</span></div><div class="help-row"><span>Brake / camera</span><span>Space / C</span></div><div class="help-row"><span>Horn / return to road</span><span>H / R</span></div><div class="help-row"><span>Meme soundboard · shared with convoy</span><span>1–9</span></div><p class="soundboard-help">${SOUNDS.map(sound=>`${sound.key}. ${escape(sound.name)}`).join('<br>')}</p><div class="help-row"><span>Garage</span><span>Esc</span></div><button class="drive-button" id="close-help">${icon('check')}<span>Got it. Let’s go</span></button></section></div>
+    <div class="modal-backdrop" id="help-modal" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title"><div class="eyebrow">THE OPEN ROAD, EXPLAINED</div><h2 id="help-title">Easy does it.</h2><p>Drive, discover bus stops, and make a convoy with your friends. Your bus signs travel with you.</p><div class="help-row"><span>Accelerate / reverse</span><span>W / S or ↑ / ↓</span></div><div class="help-row"><span>Steer</span><span>A / D or ← / →</span></div><div class="help-row"><span>Brake / camera</span><span>Space / C</span></div><div class="help-row"><span>Horn / return to road</span><span>H / R</span></div><div class="help-row"><span>Meme soundboard · shared with convoy</span><span>1–9</span></div><p class="soundboard-help">${SOUNDS.map(sound=>`${sound.key}. ${escape(sound.name)}`).join('<br>')}</p><div class="help-row"><span>Garage</span><span>Esc</span></div><button class="drive-button" id="close-help">${icon('check')}<span>Got it. Let’s go</span></button></section></div>
     <div class="toast" id="toast" role="status" hidden></div>`;
   const $ = selector => root.querySelector(selector);
   const telemetryNodes = {speed: $('#speed'), distance: $('#distance'), stopDistance: $('#stop-distance'), route: $('#route-name')};
@@ -60,8 +56,7 @@ export function createUI(callbacks = {}) {
   const emitSkin = () => { profile.skin.name=profile.name;profile.skin.destination=profile.destination;save();invoke('onSkin',{...profile.skin}); };
   const bind = (id, fn) => $(id).addEventListener('click',fn);
   const markGroup = group => all(`[data-group="${group}"] button`).forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.value===profile[group])));
-  const markPresets = () => all('[data-preset]').forEach(button=>button.setAttribute('aria-pressed',String(presets[Number(button.dataset.preset)][1]===profile.skin.color && presets[Number(button.dataset.preset)][2]===profile.skin.accent)));
-  $('#pattern').value=profile.skin.pattern;$('#quality').value=profile.quality;
+  $('#quality').value=profile.quality;
   ['environment','time'].forEach(group=>{markGroup(group);all(`[data-group="${group}"] button`).forEach(button=>button.addEventListener('click',()=>{profile[group]=button.dataset.value;markGroup(group);save();invoke(group==='time'?'onTime':'onEnvironment',profile[group]);}));});
   $('#driver-name').addEventListener('input',event=>{profile.name=event.target.value.slice(0,24);emitSkin();});
   $('#destination').addEventListener('input',event=>{profile.destination=event.target.value.slice(0,28);emitSkin();});
@@ -69,19 +64,7 @@ export function createUI(callbacks = {}) {
   $('#rear-text').addEventListener('input',updateRearText);
   $('#rear-text').addEventListener('compositionend',updateRearText);
   loadRearTextFont();
-  $('#body-color').addEventListener('input',event=>{profile.skin.color=event.target.value;markPresets();emitSkin();});
-  $('#accent-color').addEventListener('input',event=>{profile.skin.accent=event.target.value;markPresets();emitSkin();});
-  $('#pattern').addEventListener('change',event=>{profile.skin.pattern=event.target.value;emitSkin();});
-  all('[data-preset]').forEach(button=>button.addEventListener('click',()=>{const [,color,accent]=presets[Number(button.dataset.preset)];Object.assign(profile.skin,{color,accent});$('#body-color').value=color;$('#accent-color').value=accent;markPresets();emitSkin();}));
   $('#quality').addEventListener('change',event=>{profile.quality=event.target.value;save();invoke('onQuality',profile.quality);});
-  bind('#upload-skin',()=>$('#skin-upload').click());
-  $('#skin-upload').addEventListener('change',async event=>{
-    const file=event.target.files?.[0];if(!file)return;
-    if(!['image/png','image/jpeg','image/webp'].includes(file.type)){toast('Choose a PNG, JPG or WebP image.');return;}
-    if(file.size>8*1024*1024){toast('Keep your skin image under 8 MB.');return;}
-    try{const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');const scale=Math.min(1,1024/Math.max(bitmap.width,bitmap.height));canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);let encoded=canvas.toDataURL('image/jpeg',.8);let quality=.8;while(encoded.length>190000){if(quality>.45){quality-=.12;}else{canvas.width=Math.max(32,Math.round(canvas.width*.75));canvas.height=Math.max(32,Math.round(canvas.height*.75));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);quality=.7;}encoded=canvas.toDataURL('image/jpeg',quality);}bitmap.close();profile.skin.image=encoded;$('#remove-skin').hidden=false;emitSkin();toast('Looking good. Your custom skin is on.');}catch{toast('Couldn’t open that image. Try another file.');}
-  });
-  bind('#remove-skin',()=>{profile.skin.image=null;$('#skin-upload').value='';$('#remove-skin').hidden=true;emitSkin();});
   bind('#drive',()=>{if(!profile.name.trim()){profile.name=defaults.name;$('#driver-name').value=profile.name;emitSkin();}setDriving(true);setPaused(false);invoke('onDrive',getProfile());});
   bind('#garage-toggle',()=>{setDriving(false);invoke('onPause',true,{garage:true});});
   bind('#convoy-toggle',()=>{setDriving(false);setPaused(false);invoke('onPause',true,{garage:true});requestAnimationFrame(()=>$(roomState?.code?'#room-active':'#room-lobby').scrollIntoView({behavior:'smooth',block:'center'}));});
