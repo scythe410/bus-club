@@ -1,4 +1,6 @@
-/** Procedural diesel, pneumatic brakes and road noise. No audio is fetched at runtime. */
+import {SOUNDS, validSound} from '../shared/soundboard.js';
+
+/** Procedural bus audio and locally bundled meme sounds share the mute-aware mixer. */
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 const finite=(value,fallback=0)=>Number.isFinite(value)?value:fallback;
 const BANDS=[0,12,25,42,62,84,120];
@@ -13,6 +15,7 @@ export function engineVoice(speed=0,throttle=0){
 export class BusAudio {
   constructor(){
     this.enabled=false;this.context=null;this.active=false;this.suspendTimer=null;
+    this.soundBuffers=new Map();this.soundSources=new Set();this.soundEpoch=0;
     this.lastGear=0;this.lastBrake=0;this.lastHiss=-10;this.lastHorn=-10;
   }
   async enable(value=true){
@@ -24,6 +27,33 @@ export class BusAudio {
     // Called by the sound/drive gesture, so mobile browsers can unlock audio here.
     if(value)await this.context?.resume();
     this.setActive(this.active);
+    if(value&&this.context)void this.preloadSounds();
+  }
+  loadSound(id){
+    if(!validSound(id)||!this.context)return Promise.resolve(null);
+    if(!this.soundBuffers.has(id)){
+      const pending=fetch(SOUNDS[id-1].file).then(response=>{
+        if(!response.ok)throw Error('Sound download failed.');
+        return response.arrayBuffer();
+      }).then(bytes=>this.context.decodeAudioData(bytes)).catch(error=>{this.soundBuffers.delete(id);throw error;});
+      this.soundBuffers.set(id,pending);
+    }
+    return this.soundBuffers.get(id);
+  }
+  preloadSounds(){return Promise.allSettled(SOUNDS.map(sound=>this.loadSound(sound.key)));}
+  async playSound(id){
+    if(!validSound(id)||!this.enabled||!this.active||!this.context)return false;
+    const epoch=this.soundEpoch;
+    const buffer=await this.loadSound(id);
+    if(!buffer||epoch!==this.soundEpoch||!this.enabled||!this.active)return false;
+    // Replace the current clip so long samples and rapid selections cannot pile up.
+    for(const source of this.soundSources)source.stop();
+    this.soundSources.clear();
+    const source=this.context.createBufferSource(),gain=this.context.createGain();
+    source.buffer=buffer;gain.gain.value=.65;
+    source.connect(gain);gain.connect(this.master);this.soundSources.add(source);
+    source.onended=()=>{source.disconnect();gain.disconnect();this.soundSources.delete(source);};
+    source.start();return true;
   }
   build(ctx){
     this.master=ctx.createGain();this.master.gain.value=0;
@@ -60,7 +90,13 @@ export class BusAudio {
     this.turbo.connect(this.turboGain);this.turboGain.connect(this.master);this.turbo.start();
   }
   setActive(active){
-    this.active=Boolean(active);if(!this.context)return;
+    this.active=Boolean(active);
+    if(!this.enabled||!this.active){
+      this.soundEpoch++;
+      for(const source of this.soundSources)source.stop();
+      this.soundSources.clear();
+    }
+    if(!this.context)return;
     const audible=this.enabled&&this.active,ctx=this.context;
     if(audible){
       clearTimeout(this.suspendTimer);this.suspendTimer=null;

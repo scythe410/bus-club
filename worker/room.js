@@ -1,3 +1,4 @@
+import {validSound,SOUND_COOLDOWN_MS} from '../shared/soundboard.js';
 import {spawnState} from '../shared/spawn.js';
 import {DurableObject} from 'cloudflare:workers';
 
@@ -107,6 +108,13 @@ export class BusRoom extends DurableObject {
       }
       if(!data.joined)throw Error('Join a convoy first.');
       if(msg.type==='state'){data.state=state(msg.state??msg);ws.serializeAttachment(data);this.queueSnapshot();return;}
+      if(msg.type==='sound') {
+        if(!validSound(msg.soundId))throw Error('Invalid sound.');
+        if(now-(data.soundAt??-Infinity)<SOUND_COOLDOWN_MS)return;
+        data.soundAt=now;ws.serializeAttachment(data);
+        for(const peer of this.active())if(peer!==ws&&peer.deserializeAttachment()?.joined)this.send(peer,{type:'sound',soundId:msg.soundId,playerId:data.id});
+        return;
+      }
       if(msg.type==='profile') {
         if(now-data.profileAt<300)throw Error('Please wait before updating your skin again.');
         const clean=profile(msg.profile??{name:msg.name,skin:msg.skin});

@@ -1,3 +1,4 @@
+import {validSound,SOUND_COOLDOWN_MS} from './shared/soundboard.js';
 import {spawnState} from './shared/spawn.js';
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -9,7 +10,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 export const MAX_IMAGE_BYTES = 192 * 1024;
 const MAX_PAYLOAD = MAX_IMAGE_BYTES + 4096;
 const ROOM_SIZE = 8;
-const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.ttf':'font/ttf','.glb':'model/gltf-binary'};
+const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.ttf':'font/ttf','.glb':'model/gltf-binary','.mp3':'audio/mpeg'};
 
 const DEFAULT_SKIN = {color:'#f4a261', secondary:'#fff5df', pattern:'stripe', text:'BUS CLUB', image:null};
 function validProfile(input = {}) {
@@ -121,6 +122,13 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
         const room=rooms.get(ws.room);const player=room?.players.get(ws.id);
         if (!player) throw Error('Join a convoy first.');
         if (msg.type==='state') {player.state=validState(msg.state ?? msg);return;}
+        if (msg.type==='sound') {
+          if(!validSound(msg.soundId))throw Error('Invalid sound.');
+          if(now-(ws.soundAt??-Infinity)<SOUND_COOLDOWN_MS)return;
+          ws.soundAt=now;
+          for(const peer of room.players.values())if(peer.ws!==ws)send(peer.ws,{type:'sound',soundId:msg.soundId,playerId:ws.id});
+          return;
+        }
         if (msg.type==='profile') {
           if (now-ws.profileAt<300) throw Error('Please wait before updating your skin again.');
           Object.assign(player,validProfile(msg.profile ?? {name:msg.name,skin:msg.skin}));ws.profileAt=now;publishRoom(room);return;

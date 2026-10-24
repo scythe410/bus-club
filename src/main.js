@@ -3,10 +3,16 @@ import {BusGame} from './game.js';
 import {createUI} from './ui.js';
 import {RoomClient} from './network.js';
 import {BusAudio} from './audio.js';
+import {SOUNDS,SOUND_COOLDOWN_MS} from '../shared/soundboard.js';
 
 let game,network,ui,driving=false,paused=false,sound=true,profileTimer,spawnedId=null;
 try{sound=localStorage.getItem('bus-club-sound')!=='off';}catch{}
 const audio=new BusAudio();
+let lastSoundAt=-Infinity;
+const playSound=id=>{
+  audio.setActive(driving&&!paused);
+  void audio.playSound(id).catch(()=>toast('That sound could not load. Try again.'));
+};
 const input={left:false,right:false,throttle:false,brake:false};
 const toast=message=>ui?.toast(message);
 const syncProfile=()=>{
@@ -16,7 +22,7 @@ const syncProfile=()=>{
 };
 const setPause=(value,{garage=false}={})=>{
   if(garage)driving=false;
-  paused=value;game?.setPaused(value||!driving);if(garage)game?.setGarage(true);ui.setPaused(value&&!garage);
+  paused=value;audio.setActive(driving&&!paused);game?.setPaused(value||!driving);if(garage)game?.setGarage(true);ui.setPaused(value&&!garage);
   if(value){for(const key in input)input[key]=false;game?.setInput({throttle:0,brake:0,steer:0});}
 };
 const go=()=>{driving=true;paused=false;game?.start();game?.setPaused(false);ui.setDriving(true);ui.setPaused(false);if(sound)audio.enable(true).catch(()=>{});};
@@ -63,6 +69,7 @@ network=new RoomClient({
     if(!room)spawnedId=null;
     if(room){const url=new URL(location.href);url.searchParams.set('room',room.code);history.replaceState(null,'',url);}
   },
+  onSound:id=>playSound(id),
   onPeers:peers=>game?.setPeers(peers),
   onError:message=>toast(message),
   onStatus:status=>{
@@ -95,6 +102,12 @@ try{
 document.addEventListener('keydown',event=>{
   if(event.defaultPrevented||event.ctrlKey||event.metaKey||event.altKey||!driving||paused||!document.querySelector('#help-modal')?.hidden)return;
   if(/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName)||document.activeElement?.isContentEditable)return;
+  const soundKey=/^(?:Digit|Numpad)([1-9])$/.exec(event.code);
+  if(soundKey&&!event.repeat){
+    event.preventDefault();
+    const now=performance.now();if(now-lastSoundAt<SOUND_COOLDOWN_MS)return;lastSoundAt=now;
+    const id=Number(soundKey[1]);playSound(id);network.sendSound(id);toast(`${id} · ${SOUNDS[id-1].name}`);
+  }
   if(event.code==='KeyH'&&!event.repeat)audio.horn();
 });
 window.addEventListener('blur',()=>{if(driving&&!paused)setPause(true);});

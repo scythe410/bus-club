@@ -1,7 +1,8 @@
+import {validSound} from '../shared/soundboard.js';
 /** The same room protocol is served by Node locally and Durable Objects online. */
 export class RoomClient {
-  constructor({onRoom=()=>{},onPeers=()=>{},onError=()=>{},onStatus=()=>{}}={}) {
-    Object.assign(this,{onRoom,onPeers,onError,onStatus});
+  constructor({onRoom=()=>{},onPeers=()=>{},onError=()=>{},onStatus=()=>{},onSound=()=>{}}={}) {
+    Object.assign(this,{onRoom,onPeers,onError,onStatus,onSound});
     this.socket=null;this.code=null;this.selfId=null;this.players=new Map();this.lastSent=0;this.generation=0;
   }
   create(profile) {return this.connect('create',this.randomCode(),profile);}
@@ -43,6 +44,8 @@ export class RoomClient {
           if(player)this.players.set(state.id,{...player,...state});
         }
         this.emitPeers();
+      } else if(message.type==='sound'&&validSound(message.soundId)&&message.playerId!==this.selfId&&this.players.has(message.playerId)) {
+        this.onSound(message.soundId,message.playerId);
       } else if(message.type==='error') {this.onError(message.message);if(!this.code){this.onStatus('error');settle(new Error(message.message));socket.close();}}
     });
     socket.addEventListener('error',()=>{if(generation===this.generation){const message='Could not connect to the convoy server.';this.onError(message);this.onStatus('error');settle(new Error(message));}});
@@ -60,6 +63,7 @@ export class RoomClient {
     const now=performance.now();if(!this.code || now-this.lastSent<75)return;
     this.lastSent=now;this.send({type:'state',state});
   }
+  sendSound(soundId) {if(this.code&&validSound(soundId))this.send({type:'sound',soundId});}
   updateProfile(profile) {this.send({type:'profile',profile});}
   leave() {
     if(this.pendingConnection){clearTimeout(this.pendingConnection.timer);this.pendingConnection.reject(new Error('Connection cancelled.'));this.pendingConnection=null;}

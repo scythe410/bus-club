@@ -56,3 +56,27 @@ test('missing rooms, malformed input, invalid positions and oversized skins do n
   const response=await fetch(base.replace('ws:','http:').replace('/ws','/health'));assert.equal((await response.json()).ok,true);
  } finally {p.ws.terminate();await delay(30);}
 });
+
+test('soundboard relays all nine sounds only to room peers, validates IDs and limits repeats',async()=>{
+ const a=await client(),b=await client(),outsider=await client();
+ const receivedA=[],receivedB=[],receivedOther=[];
+ a.ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='sound')receivedA.push(m);});
+ b.ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='sound')receivedB.push(m);});
+ outsider.ws.on('message',raw=>{const m=JSON.parse(raw);if(m.type==='sound')receivedOther.push(m);});
+ try {
+  a.send({type:'create',profile:profile('Sound host')});const room=await a.wait('room');
+  b.send({type:'join',code:room.code,profile:profile('Listener')});await b.wait('room');
+  outsider.send({type:'create',profile:profile('Other room')});await outsider.wait('room');
+  for(let id=1;id<=9;id++){
+   if(id>1)await delay(620);
+   a.send({type:'sound',soundId:id,playerId:'spoof'});
+   const event=await b.wait('sound',m=>m.soundId===id);assert.equal(event.playerId,room.selfId);
+  }
+  a.send({type:'sound',soundId:1});
+  for(const soundId of [0,10,1.5,'1',null])a.send({type:'sound',soundId});
+  await a.wait('error',m=>m.message==='Invalid sound.');await delay(60);
+  assert.equal(receivedB.length,9);assert.equal(receivedA.length,0);assert.equal(receivedOther.length,0);
+  const response=await fetch(base.replace('ws:','http:').replace('/ws','/sounds/dry-fart.mp3'));
+  assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'audio/mpeg');
+ } finally {a.ws.terminate();b.ws.terminate();outsider.ws.terminate();await delay(30);}
+});

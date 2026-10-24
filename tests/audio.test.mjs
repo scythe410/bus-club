@@ -43,3 +43,19 @@ test('audio controls remain finite for invalid telemetry and all gears',()=>{
     }
   }
 });
+
+test('soundboard replaces clips and clears playback when paused or muted',async()=>{
+ const audio=new BusAudio(),sources=[];
+ audio.enabled=true;audio.active=true;
+ audio.context={currentTime:0,state:'running',createBufferSource(){const source={connect(){},disconnect(){},start(){this.started=true;},stop(){this.stopped=true;}};sources.push(source);return source;},createGain(){return {gain:{value:0},connect(){},disconnect(){}};},suspend:async()=>{}};
+ audio.master={gain:{setTargetAtTime(){}}};audio.loadSound=async()=>({});
+ assert.equal(await audio.playSound(1),true);assert.equal(sources[0].started,true);
+ await audio.playSound(9);assert.equal(sources[0].stopped,true);
+ audio.setActive(false);assert.equal(sources[1].stopped,true);
+ assert.equal(await audio.playSound(1),false);clearTimeout(audio.suspendTimer);
+ audio.active=true;audio.enabled=false;assert.equal(await audio.playSound(1),false);
+ audio.enabled=true;assert.equal(await audio.playSound(10),false);
+ let resolve;audio.loadSound=()=>new Promise(r=>{resolve=r;});
+ const pending=audio.playSound(2);audio.setActive(false);audio.setActive(true);resolve({});
+ assert.equal(await pending,false,'a clip loaded during pause must not play on resume');clearTimeout(audio.suspendTimer);
+});
