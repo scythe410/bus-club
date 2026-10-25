@@ -58,6 +58,51 @@ markers/stops moved inward with the road. Off-road detection includes an approxi
 Validation covers steering direction through the actual camera, acceleration under
 load, cornering limits, braking/reverse, load conservation and transfer, suspension
 settling, frame rates, and all eight spawn footprints fitting the road. This remains
-an assisted casual driving model, with no vehicle collisions or rollover simulation.
+an assisted casual driving model. Bus-to-bus contact now uses a separate planar
+rigid-body solver; rollover, deformation and roadside-object collisions are not modeled.
 
 Road gradient forces and a changing passenger center of mass are not modeled. The mass/load-transfer values remain explicitly assumed game parameters.
+
+## Requested speed and chase-camera revision
+
+The playable speed limit is now **120 km/h** (`120 / 3.6` m/s). The power,
+traction, vehicle mass, passenger load, braking and lateral acceleration limits
+remain as above. To make the new limit attainable, the quadratic aerodynamic
+resistance factor is now **1.6**, an explicit game tuning parameter rather than
+a measured drag coefficient. Raising only the speed clamp would leave the old
+resistance model settling below 120 km/h. On a paved, straight, gradient-free
+physics run, full throttle reaches the limit in approximately 82 seconds empty
+and 168 seconds with 58 passengers. Off-road resistance remains higher.
+
+The chase camera now lowers from 5.2 m above the road at rest to 3.85 m at
+120 km/h, and moves from 14 m to 12.1 m behind the bus center. Acceleration adds
+a small lower/closer response. FOV changes smoothly from 52° to 59° as speed rises.
+The camera follows actual bus translation before smoothing its relative offset;
+otherwise world-space camera damping adds about 11 m of unintended following
+distance at 120 km/h. Existing road markings and roadside objects provide natural
+parallax. There is no motion blur, camera shake, artificial scenery velocity, or
+speed multiplier. Driver and cabin camera positions stay tied to their seats.
+
+Additional automated checks cover attaining and holding 120 km/h both empty and
+loaded, cornering limits and stopping distance at 120 km/h, complete bus framing
+in landscape and portrait, finite camera parameters, and sustained highway chase
+distance in the real frame method.
+
+
+## Speed and contact tuning, 24 October 2026
+
+Maximum speed is now 120/3.6 m/s. Original power, traction, mass, brake and steering
+limits remain; quadratic paved drag is tuned to 1.6×speed² N so sustained throttle
+can reach the cap even with 58 passengers (about 82 s empty / 168 s loaded from
+rest on the pure paved simulation). This is gameplay tuning, not a measured bus
+top-speed or aerodynamic coefficient. The highway lateral assist stays at 2.5 m/s².
+
+The chase camera lowers from 5.2 to 3.85 m and closes from 14 to 12.1 m as speed
+rises, with a small additional acceleration response and 52–59° FOV. It follows
+actual translation before smoothing its offset, eliminating speed-dependent lag
+that previously made the bus appear farther away. Scenery speed is unchanged.
+
+Contact uses oriented bus rectangles, low restitution, mass-dependent impulses,
+side velocity and bounded yaw impulses. Clients predict contact while both room
+servers confirm corrections for affected drivers. This remains an approximation
+with network latency, rather than a full suspension or deformation simulation.

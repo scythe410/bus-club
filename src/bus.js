@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { createBusModel } from './imported-bus.js';
 import { RearTextPanel } from './rear-text.js';
+import { getBusModelSpec, normalizeBusModelId } from './bus-catalog.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mountBusWheel, animateBusWheels } from './bus-wheels.js';
 
 const box = (w,h,d,mat,x=0,y=0,z=0) => {const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return m;};
 const material=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:.68,...extra});
@@ -24,8 +26,9 @@ export class Bus {
       this.group.add(box(.16,.12,.6,dark,side*1.64,2.28,4.04));
       this.group.add(box(.12,.54,.3,dark,side*1.76,2.48,4.12));
       for(const z of [-2.9,3]){
-        const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,.3,20),rubber);wheel.rotation.z=Math.PI/2;wheel.position.set(side*1.39,.65,z);wheel.castShadow=true;this.group.add(wheel);this.wheels.push(wheel);
-        const hub=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.32,12),chrome);hub.rotation.z=Math.PI/2;hub.position.copy(wheel.position);this.group.add(hub);
+        const wheel=new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,.3,20).rotateZ(Math.PI/2),rubber);wheel.castShadow=true;
+        const mount=mountBusWheel(wheel,new THREE.Vector3(side*1.39,.65,z),.6);this.group.add(mount);this.wheels.push(wheel);
+        const hub=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.32,12).rotateZ(Math.PI/2),chrome);wheel.add(hub);
       }
       this.group.add(box(.05,2.3,.035,chrome,side*1.43,1.95,3.7));
       this.group.add(box(.05,2.3,.035,chrome,side*1.43,1.95,2.65));
@@ -37,7 +40,7 @@ export class Bus {
     // Merge the stationary body by material so a convoy stays inexpensive.
     const batches=new Map();
     for(const mesh of [...this.group.children]){
-      if(this.wheels.includes(mesh))continue;
+      if(!mesh.isMesh)continue;
       mesh.updateMatrix();const geometry=mesh.geometry.clone().applyMatrix4(mesh.matrix);
       if(!batches.has(mesh.material))batches.set(mesh.material,[]);batches.get(mesh.material).push(geometry);
       this.group.remove(mesh);mesh.geometry.dispose();
@@ -48,24 +51,28 @@ export class Bus {
     this.destination=new THREE.Mesh(new THREE.PlaneGeometry(2.43,.4),new THREE.MeshStandardMaterial({roughness:.7,emissive:'#fff1cb',emissiveIntensity:.3}));this.destination.position.set(0,3.48,4.74);this.group.add(this.destination);
     this.rearPanel=new RearTextPanel();this.group.add(this.rearPanel.mesh);
     this.setSkin(this.skin);
-    this.ready=this.loadModel();
+    this.ready=this.loadModel(this.skin.modelId);
   }
-  async loadModel(){
+  async loadModel(modelId,createModel=createBusModel){
+    modelId=normalizeBusModelId(modelId);
+    this.requestedModelId=modelId;this.modelLoading=true;
+    const version=this.modelVersion=(this.modelVersion||0)+1;
     try {
-      const model=await createBusModel();
-      if(this.disposed){this.disposeModel(model);return;}
+      const model=await createModel(modelId);
+      if(this.disposed||version!==this.modelVersion){this.disposeModel(model);return false;}
       // Retain editable signs and liveries while replacing the procedural shell.
       const retained=new Set([...this.sidePanels,this.destination,this.cockpit,this.rearPanel.mesh]);
       for(const child of [...this.group.children]){
         if(retained.has(child))continue;
         this.group.remove(child);this.disposeModel(child);
       }
-      this.group.scale.setScalar(10.934/9.8);this.group.add(model);this.importedModel=model;
-      this.wheels=[];
+      this.group.scale.setScalar(10.934/9.8);this.group.add(model);this.importedModel=model;this.modelId=modelId;
+      this.modelLoading=false;this.modelError=null;
+      this.wheels=[];this.headlights=[];
       model.traverse(mesh=>{
         if(mesh.userData.wheel){mesh.userData.radius*=10.934/9.8;this.wheels.push(mesh);}
         if(mesh.material?.name==='Material.006')this.accentMaterial=mesh.material;
-        if(['Material_1.003','Material.011'].includes(mesh.material?.name)||mesh.name==='Nil Kirilli white'){
+        if(mesh.material?.userData.headlight||['Material_1.003','Material.011'].includes(mesh.material?.name)||mesh.name==='Nil Kirilli white'){
           mesh.material.emissive.set('#ffe7a0');
           mesh.material.emissiveIntensity=this.lampMaterial.emissiveIntensity;
           if(!this.headlights)this.headlights=[];
@@ -80,8 +87,12 @@ export class Bus {
       this.destination.position.set(.045,2.59,4.566);
       this.rearPanel.useImportedModel();
       this.setSkin(this.skin);
+      if(this.cockpit){const spec=getBusModelSpec(modelId);this.cockpit.traverse(mesh=>{if(mesh.material?.userData.busCockpitTrim)mesh.material.color.set(spec.cockpit);});}
       return true;
-    }catch(error){console.warn('Using the classic bus because the Sri Lanka model could not load.',error);return false;}
+    }catch(error){
+      if(version===this.modelVersion){this.modelLoading=false;this.modelError=error;}
+      console.warn('The selected bus could not load; retaining the current bus.',error);return false;
+    }
   }
   disposeModel(root){
     const mats=new Set(),geoms=new Set(),textures=new Set();
@@ -89,9 +100,16 @@ export class Bus {
     for(const t of textures)t.dispose();for(const m of mats)m.dispose();for(const g of geoms)g.dispose();
   }
   setSkin(next){
-    Object.assign(this.skin,next);this.rearPanel.setSkin(this.skin);const s=this.skin;
+    Object.assign(this.skin,next);this.skin.modelId=normalizeBusModelId(this.skin.modelId);
+    const spec=getBusModelSpec(this.skin.modelId);
+    // Body colors belong to the chosen reference bus; signs stay customizable.
+    this.skin.color=spec.color;this.skin.accent=spec.accent;
+    if(this.requestedModelId!==undefined&&this.requestedModelId!==this.skin.modelId)this.ready=this.loadModel(this.skin.modelId);
+    this.rearPanel.setSkin(this.skin);const s=this.skin;
+    // Reference murals belong on the flanks; custom driver names stay off them.
+    for(const panel of this.sidePanels)panel.visible=Boolean(s.image);
     if(this.importedModel&&this.panelImageMode!==Boolean(s.image)){this.panelImageMode=Boolean(s.image);for(const panel of this.sidePanels){panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,s.image?.55:.2);}}
-    if(!this.importedModel)this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(this.importedModel?'#0876dc':s.accent);
+    if(!this.importedModel){this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(s.accent);}
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=160;const c=canvas.getContext('2d');
     c.fillStyle=s.color;c.fillRect(0,0,1024,160);c.fillStyle=s.accent;
     if(s.pattern==='wave'){c.beginPath();c.moveTo(0,85);for(let x=0;x<=1024;x+=8)c.lineTo(x,85+Math.sin(x/130)*35);c.lineTo(1024,160);c.lineTo(0,160);c.fill();}
@@ -109,9 +127,19 @@ export class Bus {
     if(!imageUnchanged)this.uploadedTexture=null;
     const sign=document.createElement('canvas');sign.width=512;sign.height=88;const sc=sign.getContext('2d');sc.fillStyle='#182b2c';sc.fillRect(0,0,512,88);sc.fillStyle='#ffe6a9';sc.textAlign='center';sc.font='bold 30px monospace';sc.fillText((s.destination||'THE LONG WAY HOME').toUpperCase().slice(0,25),256,56);
     if(this.destination.material.map)this.destination.material.map.dispose();this.destination.material.map=new THREE.CanvasTexture(sign);this.destination.material.map.colorSpace=THREE.SRGBColorSpace;this.destination.material.needsUpdate=true;
-    if(s.image&&!imageUnchanged){this.loadedImage=s.image;const source=s.image;const version=(this.imageVersion||0)+1;this.imageVersion=version;new THREE.TextureLoader().load(source,tex=>{if(this.disposed||this.loadedImage!==source||this.imageVersion!==version){tex.dispose();return;}tex.colorSpace=THREE.SRGBColorSpace;this.uploadedTexture=tex;const old=new Set(this.sidePanels.map(p=>p.material.map));for(const p of this.sidePanels){p.material.map=tex;p.material.needsUpdate=true;}for(const t of old)if(t)t.dispose();});}
-    if(!s.image){this.loadedImage=null;this.imageVersion=(this.imageVersion||0)+1;}
+    if(s.image&&!imageUnchanged){
+      if(this.loadedImage!==s.image||!this.skinReady){
+        this.loadedImage=s.image;const source=s.image;const version=(this.imageVersion||0)+1;this.imageVersion=version;
+        this.skinReady=new Promise(resolve=>new THREE.TextureLoader().load(source,tex=>{
+          if(this.disposed||this.loadedImage!==source||this.imageVersion!==version){tex.dispose();resolve(true);return;}
+          tex.colorSpace=THREE.SRGBColorSpace;this.uploadedTexture=tex;const old=new Set(this.sidePanels.map(p=>p.material.map));
+          for(const p of this.sidePanels){p.material.map=tex;p.material.needsUpdate=true;}for(const t of old)if(t)t.dispose();resolve(true);
+        },undefined,()=>{this.loadedImage=null;resolve(false);}));
+      }
+    }
+    if(!s.image){this.loadedImage=null;this.imageVersion=(this.imageVersion||0)+1;this.skinReady=Promise.resolve(true);}
+
   }
-  animate(speed,dt){for(const wheel of this.wheels)wheel.rotation.x+=speed*dt/(wheel.userData.radius||.6);for(const mat of this.headlights||[])mat.emissiveIntensity=this.lampMaterial.emissiveIntensity;}
+  animate(speed,dt,wheelAngle=0){animateBusWheels(this.wheels,speed,dt,wheelAngle);for(const mat of this.headlights||[])mat.emissiveIntensity=this.lampMaterial.emissiveIntensity;}
   dispose(){this.disposed=true;this.rearPanel.dispose();this.disposeModel(this.group);this.bodyMaterial.dispose();this.lampMaterial.dispose();}
 }

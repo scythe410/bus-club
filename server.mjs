@@ -1,3 +1,4 @@
+import {collisionMotion, updateCollisionStates} from './shared/collisions.js';
 import {validSound,SOUND_COOLDOWN_MS} from './shared/soundboard.js';
 import {spawnState} from './shared/spawn.js';
 import http from 'node:http';
@@ -38,7 +39,7 @@ function validState(input) {
     result[key] = input[key];
   }
   result.y = Number.isFinite(input.y) && Math.abs(input.y) < 1e7 ? input.y : 0;
-  return result;
+  return {...result,...collisionMotion(input)};
 }
 
 export function createBusServer({dist = path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist')} = {}) {
@@ -121,7 +122,13 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
         }
         const room=rooms.get(ws.room);const player=room?.players.get(ws.id);
         if (!player) throw Error('Join a convoy first.');
-        if (msg.type==='state') {player.state=validState(msg.state ?? msg);return;}
+        if (msg.type==='state') {
+          const input=msg.state??msg,incoming=validState(input);
+          const impact=input.impact?validState(input.impact):null;
+          const changed=updateCollisionStates([...room.players.values()],ws.id,incoming,impact);
+          for(const p of changed)send(p.ws,{type:'collision',state:p.state});
+          return;
+        }
         if (msg.type==='sound') {
           if(!validSound(msg.soundId))throw Error('Invalid sound.');
           if(now-(ws.soundAt??-Infinity)<SOUND_COOLDOWN_MS)return;

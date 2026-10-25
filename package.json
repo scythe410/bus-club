@@ -12,6 +12,7 @@
     "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
+    "ascii-reveal": "file:vendor/ascii-reveal",
     "three": "^0.180.0",
     "ws": "^8.18.3"
   },

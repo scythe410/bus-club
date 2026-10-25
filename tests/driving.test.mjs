@@ -9,7 +9,7 @@ function vehicle(key,yaw,touch=0){
   return Object.assign(Object.create(BusGame.prototype),{
     keys:new Set(key?[key]:[]),input:{throttle:0,brake:0,steer:touch},
     x:roadX(0),z:0,yaw,speed:10,steering:0,distance:0,
-    collected:new Set(),passengers:0,onPickup:()=>{},
+    collected:new Set(),peers:new Map(),passengers:0,onPickup:()=>{},
   });
 }
 // Project the simulated movement through the actual chase-camera orientation.

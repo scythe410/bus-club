@@ -1,6 +1,6 @@
 import {SOUNDS, validSound} from '../shared/soundboard.js';
 
-/** Procedural bus audio and locally bundled meme sounds share the mute-aware mixer. */
+/** Synthesized turbo diesel (not a recorded Leyland) and soundboard share a mute-aware mixer. */
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 const finite=(value,fallback=0)=>Number.isFinite(value)?value:fallback;
 const BANDS=[0,12,25,42,62,84,120];
@@ -9,14 +9,18 @@ export function engineVoice(speed=0,throttle=0){
   let gear=0;while(gear<5&&kmh>=BANDS[gear+1])gear++;
   const progress=clamp((kmh-BANDS[gear])/(BANDS[gear+1]-BANDS[gear]),0,1);
   const rpm=kmh<4?650+kmh*95+load*230:1000+progress*1200+load*160;
-  return {rpm,gear,frequency:rpm/20,volume:.075+load*.055+Math.min(kmh,100)*.00015,air:Math.min(kmh,100)*.00016};
+  const pace=clamp(kmh/120,0,1);
+  return {rpm,gear,frequency:rpm/20,volume:.075+load*.075+pace*.018,
+    air:Math.pow(pace,.85)*.06,wind:Math.pow(pace,1.8)*.1,
+    boost:load*clamp((rpm-850)/1400,0,1),pace};
 }
 
 export class BusAudio {
   constructor(){
     this.enabled=false;this.context=null;this.active=false;this.suspendTimer=null;
-    this.soundBuffers=new Map();this.soundSources=new Set();this.soundEpoch=0;
+    this.soundBuffers=new Map();this.soundFiles=new Map();this.soundSources=new Set();this.soundEpoch=0;
     this.lastGear=0;this.lastBrake=0;this.lastHiss=-10;this.lastHorn=-10;
+    this.boost=0;this.lastUpdate=null;
   }
   async enable(value=true){
     this.enabled=Boolean(value);
@@ -29,13 +33,24 @@ export class BusAudio {
     this.setActive(this.active);
     if(value&&this.context)void this.preloadSounds();
   }
-  loadSound(id){
-    if(!validSound(id)||!this.context)return Promise.resolve(null);
-    if(!this.soundBuffers.has(id)){
+  downloadSound(id){
+    if(!validSound(id))return Promise.resolve(null);
+    if(!this.soundFiles.has(id)){
       const pending=fetch(SOUNDS[id-1].file).then(response=>{
         if(!response.ok)throw Error('Sound download failed.');
         return response.arrayBuffer();
-      }).then(bytes=>this.context.decodeAudioData(bytes)).catch(error=>{this.soundBuffers.delete(id);throw error;});
+      }).catch(error=>{this.soundFiles.delete(id);throw error;});
+      this.soundFiles.set(id,pending);
+    }
+    return this.soundFiles.get(id);
+  }
+  downloadSounds(){return Promise.all(SOUNDS.map(sound=>this.downloadSound(sound.key)));}
+  loadSound(id){
+    if(!validSound(id)||!this.context)return Promise.resolve(null);
+    if(!this.soundBuffers.has(id)){
+      // AudioContext still unlocks on Drive. Download bytes during startup and
+      // copy before decoding, which can detach the input ArrayBuffer.
+      const pending=this.downloadSound(id).then(bytes=>this.context.decodeAudioData(bytes.slice(0))).catch(error=>{this.soundBuffers.delete(id);throw error;});
       this.soundBuffers.set(id,pending);
     }
     return this.soundBuffers.get(id);
@@ -85,9 +100,19 @@ export class BusAudio {
     this.roadFilter=ctx.createBiquadFilter();this.roadFilter.type='lowpass';this.roadFilter.frequency.value=600;
     this.airGain=ctx.createGain();this.airGain.gain.value=0;
     this.air.connect(this.roadFilter);this.roadFilter.connect(this.airGain);this.airGain.connect(this.master);this.air.start();
+    // Independent broad wind rush keeps speed audible when the engine drops RPM
+    // on an upshift or the driver coasts. Tire rumble stays lower in the mix.
+    this.wind=ctx.createBufferSource();this.wind.buffer=this.noise;this.wind.loop=true;
+    this.windFilter=ctx.createBiquadFilter();this.windFilter.type='bandpass';this.windFilter.frequency.value=900;this.windFilter.Q.value=.45;
+    this.windGain=ctx.createGain();this.windGain.gain.value=0;
+    this.wind.connect(this.windFilter);this.windFilter.connect(this.windGain);this.windGain.connect(this.master);this.wind.start(0,.73);
     this.turbo=ctx.createOscillator();this.turbo.type='sine';this.turbo.frequency.value=500;
     this.turboGain=ctx.createGain();this.turboGain.gain.value=0;
     this.turbo.connect(this.turboGain);this.turboGain.connect(this.master);this.turbo.start();
+    this.intake=ctx.createBufferSource();this.intake.buffer=this.noise;this.intake.loop=true;
+    this.intakeFilter=ctx.createBiquadFilter();this.intakeFilter.type='bandpass';this.intakeFilter.frequency.value=1800;this.intakeFilter.Q.value=1.1;
+    this.intakeGain=ctx.createGain();this.intakeGain.gain.value=0;
+    this.intake.connect(this.intakeFilter);this.intakeFilter.connect(this.intakeGain);this.intakeGain.connect(this.master);this.intake.start(0,1.2);
   }
   setActive(active){
     this.active=Boolean(active);
@@ -109,8 +134,12 @@ export class BusAudio {
     },250);
   }
   update(speed,driving,throttle=0,options={}){
-    this.setActive(driving);if(!this.context||!this.enabled||!driving){this.lastBrake=0;return;}
+    this.setActive(driving);if(!this.context||!this.enabled||!driving){this.lastBrake=0;this.boost=0;this.lastUpdate=null;return;}
     const t=this.context.currentTime,voice=engineVoice(speed,throttle),load=clamp(Math.abs(finite(throttle)),0,1);
+    const dt=this.lastUpdate===null?.1:clamp(t-this.lastUpdate,0,.25);this.lastUpdate=t;
+    // Turbine inertia: pressure builds under load and decays gradually on lift.
+    const spoolTime=voice.boost>this.boost?.65:.38;
+    this.boost+=(voice.boost-this.boost)*(1-Math.exp(-dt/spoolTime));
     const braking=clamp(finite(options.braking),0,1),offroad=Boolean(options.offroad);
     if(voice.gear>this.lastGear&&load>.2&&Math.abs(speed)>4){
       this.engineGain.gain.cancelScheduledValues(t);this.engineGain.gain.setTargetAtTime(.035,t,.025);
@@ -119,10 +148,14 @@ export class BusAudio {
     this.engine.playbackRate.setTargetAtTime(voice.rpm/1000,t,.12);
     this.bass.frequency.setTargetAtTime(voice.frequency*.5,t,.13);
     this.filter.frequency.setTargetAtTime(500+voice.rpm*.24+load*380,t,.12);
-    this.airGain.gain.setTargetAtTime(voice.air*(offroad?2.2:1),t,.2);
-    this.roadFilter.frequency.setTargetAtTime(offroad?1200:450+Math.min(Math.abs(finite(speed)),100)*9,t,.2);
-    this.turbo.frequency.setTargetAtTime(420+voice.rpm*.6,t,.28);
-    this.turboGain.gain.setTargetAtTime(load*Math.max(0,voice.rpm-950)*.0000028,t,.2);
+    this.airGain.gain.setTargetAtTime(voice.air*(offroad?1.8:1),t,.2);
+    this.roadFilter.frequency.setTargetAtTime(offroad?1200:300+voice.pace*800,t,.2);
+    this.windGain.gain.setTargetAtTime(voice.wind,t,.25);
+    this.windFilter.frequency.setTargetAtTime(650+voice.pace*1350,t,.25);
+    this.turbo.frequency.setTargetAtTime(650+voice.rpm*.45+this.boost*1450,t,.16);
+    this.turboGain.gain.setTargetAtTime(this.boost*.015,t,.12);
+    this.intakeGain.gain.setTargetAtTime(this.boost*(.018+load*.023),t,.15);
+    this.intakeFilter.frequency.setTargetAtTime(1200+this.boost*1700,t,.2);
     // Air escapes when the driver releases an applied service brake, rather than
     // continuously hissing on every telemetry tick while holding the brake.
     if(this.lastBrake>.25&&braking<.1&&t-this.lastHiss>.8)this.brakeRelease(this.lastBrake);

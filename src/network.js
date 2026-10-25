@@ -1,9 +1,9 @@
 import {validSound} from '../shared/soundboard.js';
 /** The same room protocol is served by Node locally and Durable Objects online. */
 export class RoomClient {
-  constructor({onRoom=()=>{},onPeers=()=>{},onError=()=>{},onStatus=()=>{},onSound=()=>{}}={}) {
-    Object.assign(this,{onRoom,onPeers,onError,onStatus,onSound});
-    this.socket=null;this.code=null;this.selfId=null;this.players=new Map();this.lastSent=0;this.generation=0;
+  constructor({onRoom=()=>{},onPeers=()=>{},onError=()=>{},onStatus=()=>{},onSound=()=>{},onCollision=()=>{}}={}) {
+    Object.assign(this,{onRoom,onPeers,onError,onStatus,onSound,onCollision});
+    this.socket=null;this.code=null;this.selfId=null;this.players=new Map();this.lastSent=0;this.generation=0;this.collisionRevision=0;
   }
   create(profile) {return this.connect('create',this.randomCode(),profile);}
   join(code,profile) {return this.connect('join',String(code).trim().toUpperCase(),profile);}
@@ -35,9 +35,17 @@ export class RoomClient {
         const newlyConnected=!this.code;
         this.code=message.code;this.selfId=message.selfId;
         this.players=new Map(message.players.map(p=>[p.id,p]));
+        this.collisionRevision=Math.max(this.collisionRevision,this.players.get(this.selfId)?.collisionRevision||0);
         const room={code:this.code,selfId:this.selfId,players:message.players};
         if(newlyConnected)this.onStatus('connected');this.onRoom(room);settle(null,room);
         this.emitPeers();
+      } else if(message.type==='collision') {
+        const state=message.state;
+        // Stale outgoing packets can elicit the same correction repeatedly.
+        // Reapplying it would rewind motion already simulated since that hit.
+        if(state&&['x','z','yaw','speed','collisionRevision'].every(k=>Number.isFinite(state[k]))&&Number.isSafeInteger(state.collisionRevision)&&state.collisionRevision>this.collisionRevision){
+          this.collisionRevision=state.collisionRevision;this.onCollision(state);
+        }
       } else if(message.type==='snapshot') {
         for(const state of message.players) {
           const player=this.players.get(state.id);
@@ -61,7 +69,7 @@ export class RoomClient {
   send(message) {if(this.socket?.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify(message));}
   sendState(state) {
     const now=performance.now();if(!this.code || now-this.lastSent<75)return;
-    this.lastSent=now;this.send({type:'state',state});
+    this.lastSent=now;const sampled=typeof state==='function'?state():state;this.send({type:'state',state:{...sampled,collisionRevision:this.collisionRevision}});
   }
   sendSound(soundId) {if(this.code&&validSound(soundId))this.send({type:'sound',soundId});}
   updateProfile(profile) {this.send({type:'profile',profile});}
@@ -69,7 +77,7 @@ export class RoomClient {
     if(this.pendingConnection){clearTimeout(this.pendingConnection.timer);this.pendingConnection.reject(new Error('Connection cancelled.'));this.pendingConnection=null;}
     this.generation++;
     if(this.socket) {if(this.socket.readyState===WebSocket.OPEN)this.socket.send(JSON.stringify({type:'leave'}));this.socket.close();}
-    this.socket=null;this.code=null;this.selfId=null;this.players.clear();this.onPeers([]);this.onRoom(null);this.onStatus('offline');
+    this.socket=null;this.code=null;this.selfId=null;this.collisionRevision=0;this.players.clear();this.onPeers([]);this.onRoom(null);this.onStatus('offline');
   }
   getInviteURL() {const url=new URL(location.href);if(this.code)url.searchParams.set('room',this.code);return url.toString();}
 }

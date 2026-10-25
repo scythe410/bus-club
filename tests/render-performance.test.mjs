@@ -41,6 +41,28 @@ test('same tile and environment preserve scenery; changing environment rebuilds 
   world.dispose();
 });
 
+test('near-road speed detail stays world anchored and shares a tiny texture without extra draws',()=>{
+  const world=new World(new THREE.Scene());
+  try{
+    const first=world.tiles.get(0),next=world.tiles.get(1);
+    const road=first.children.find(mesh=>mesh.material===world.materials.road);
+    const nextRoad=next.children.find(mesh=>mesh.material===world.materials.road);
+    assert.equal(road.material.map,nextRoad.material.map);
+    assert.equal(world.roadTexture.image.data.byteLength,64*64*4);
+    assert.ok(world.roadTexture.generateMipmaps,'minification avoids distant road shimmer');
+    const uv=road.geometry.attributes.uv,nextUV=nextRoad.geometry.attributes.uv;
+    assert.equal(uv.getY(uv.count-1),nextUV.getY(0),'road texture remains continuous at tile boundaries');
+    const posts=first.children.find(mesh=>mesh.geometry===world.geometries.post);
+    assert.equal(posts.count,32);
+    assert.equal(meshes(world).filter(mesh=>mesh.isInstancedMesh).length,45,'denser posts reuse the same draw count');
+    const positions=posts.instanceMatrix.array.slice();world.update(25);
+    assert.deepEqual(posts.instanceMatrix.array,positions,'nearby scenery must stay fixed as the camera advances');
+    let disposals=0;world.roadTexture.addEventListener('dispose',()=>disposals++);
+    world.update(1600);assert.equal(disposals,0,'tile recycling retains the shared surface');
+    world.dispose();assert.equal(disposals,1);
+  }catch(error){world.dispose();throw error;}
+});
+
 test('clouds use one instanced draw with all original puff transforms',()=>{
   const game={scene:new THREE.Scene()};BusGame.prototype.makeClouds.call(game);
   assert.ok(game.clouds.isInstancedMesh);

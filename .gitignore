@@ -1,5 +1,7 @@
 node_modules/
 dist/
+!vendor/ascii-reveal/dist/
+!vendor/ascii-reveal/dist/**
 .env*
 .DS_Store
 .wrangler/

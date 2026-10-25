@@ -2,14 +2,31 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {BusAudio,engineVoice} from '../src/audio.js';
 
+test('startup downloads sounds without unlocking audio and playback reuses those bytes',async()=>{
+  const oldFetch=globalThis.fetch;let fetches=0,decodes=0;
+  globalThis.fetch=async()=>{fetches++;return {ok:true,arrayBuffer:async()=>new ArrayBuffer(8)};};
+  try{
+    const audio=new BusAudio();await audio.downloadSounds();assert.equal(fetches,9);assert.equal(audio.context,null);
+    audio.context={decodeAudioData:async bytes=>{decodes++;assert.equal(bytes.byteLength,8);return {};}};
+    await audio.loadSound(1);await audio.loadSound(1);assert.equal(fetches,9);assert.equal(decodes,1);
+  }finally{globalThis.fetch=oldFetch;}
+});
+test('a failed startup sound download can be retried',async()=>{
+  const oldFetch=globalThis.fetch;let attempts=0;
+  globalThis.fetch=async()=>({ok:++attempts>1,arrayBuffer:async()=>new ArrayBuffer(8)});
+  try{const audio=new BusAudio();await assert.rejects(audio.downloadSound(1));await audio.downloadSound(1);assert.equal(attempts,2);}
+  finally{globalThis.fetch=oldFetch;}
+});
+
 // Telemetry is sampled at 10 Hz: verify a held brake never retriggers a hiss,
 // and a release is rate limited independently of those update ticks.
 function audioHarness(){
-  const audio=new BusAudio(),param=()=>({setTargetAtTime(){},cancelScheduledValues(){}});
+  const audio=new BusAudio(),param=()=>({setTargetAtTime(value){this.target=value;},cancelScheduledValues(){}});
   Object.assign(audio,{enabled:true,active:true,context:{currentTime:1},
     engineGain:{gain:param()},engine:{playbackRate:param()},bass:{frequency:param()},
     filter:{frequency:param()},airGain:{gain:param()},roadFilter:{frequency:param()},
-    turbo:{frequency:param()},turboGain:{gain:param()},releases:[]});
+    turbo:{frequency:param()},turboGain:{gain:param()},windGain:{gain:param()},windFilter:{frequency:param()},
+    intakeGain:{gain:param()},intakeFilter:{frequency:param()},releases:[]});
   audio.setActive=active=>{audio.active=Boolean(active);};
   audio.brakeRelease=strength=>{audio.releases.push(strength);audio.lastHiss=audio.context.currentTime;};
   return audio;
@@ -42,6 +59,31 @@ test('audio controls remain finite for invalid telemetry and all gears',()=>{
       assert.ok(voice.rpm>=650&&voice.rpm<=2400);
     }
   }
+});
+
+test('road and wind keep building through 120 km/h independently of throttle and gear shifts',()=>{
+  let previous=engineVoice(0,0);
+  for(const speed of [12,25,42,62,84,100,110,120]){
+    const voice=engineVoice(speed,0);
+    assert.ok(voice.air>previous.air);
+    assert.ok(voice.wind>previous.wind);
+    assert.equal(voice.wind,engineVoice(speed,1).wind,'coasting must retain the speed cue');
+    previous=voice;
+  }
+  assert.equal(engineVoice(120,1).wind,engineVoice(240,1).wind,'the speed mix stays bounded');
+});
+
+test('turbo spools under engine load, trails off on lift, and resets on pause',()=>{
+  const audio=audioHarness();
+  audio.update(115,true,1);const first=audio.boost;
+  assert.ok(first>0&&first<engineVoice(115,1).boost);
+  for(let i=0;i<20;i++){audio.context.currentTime+=.1;audio.update(115,true,1);}
+  const loaded=audio.boost;
+  assert.ok(loaded>first);
+  audio.context.currentTime+=.1;audio.update(115,true,0);
+  assert.ok(audio.boost>0&&audio.boost<loaded,'spool decays rather than cutting out');
+  assert.equal(audio.windGain.gain.target,engineVoice(115,0).wind);
+  audio.update(115,false,0);assert.equal(audio.boost,0);
 });
 
 test('soundboard replaces clips and clears playback when paused or muted',async()=>{

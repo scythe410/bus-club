@@ -4,8 +4,106 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#18241e" />
-    <meta name="description" content="Your bus. Your friends. The scenic route. A customizable multiplayer driving game." />
-    <title>BUS CLUB — Take the scenic route</title>
+    <meta name="description" content="Play ISSARAHATA YANNA, a free Sri Lankan bus simulator game. Drive scenic roads, add Sinhala bus signs and explore with friends in your browser." />
+    <title>ISSARAHATA YANNA | Sri Lanka Bus Simulator Game</title>
+    <link rel="canonical" href="https://issarahatayanna.gay/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ISSARAHATA YANNA" />
+    <meta property="og:title" content="ISSARAHATA YANNA | Sri Lanka Bus Simulator Game" />
+    <meta property="og:description" content="Play ISSARAHATA YANNA, a free Sri Lankan bus simulator game. Drive scenic roads, add Sinhala bus signs and explore with friends in your browser." />
+    <meta property="og:url" content="https://issarahatayanna.gay/" />
+    <meta property="og:locale" content="en_LK" />
+    <meta property="og:locale:alternate" content="si_LK" />
+    <meta property="og:image" content="https://issarahatayanna.gay/social-preview.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta property="og:image:alt" content="A decorated blue Sri Lankan bus in the ISSARAHATA YANNA simulator" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ISSARAHATA YANNA | Sri Lanka Bus Simulator Game" />
+    <meta name="twitter:description" content="Play ISSARAHATA YANNA, a free Sri Lankan bus simulator game. Drive scenic roads, add Sinhala bus signs and explore with friends in your browser." />
+    <meta name="twitter:image" content="https://issarahatayanna.gay/social-preview.png" />
+    <meta name="twitter:image:alt" content="A decorated blue Sri Lankan bus in the ISSARAHATA YANNA simulator" />
+    <script type="application/ld+json">
+{
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "@id": "https://issarahatayanna.gay/#game",
+      "name": "ISSARAHATA YANNA",
+      "alternateName": "MADA PELIYA ISSARAHATA YANNA",
+      "url": "https://issarahatayanna.gay/",
+      "description": "Play ISSARAHATA YANNA, a free Sri Lankan bus simulator game. Drive scenic roads, add Sinhala bus signs and explore with friends in your browser.",
+      "image": "https://issarahatayanna.gay/social-preview.png",
+      "genre": [
+            "Simulation",
+            "Driving"
+      ],
+      "gamePlatform": "Web browser",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Any operating system with a modern WebGL browser",
+      "isAccessibleForFree": true,
+      "inLanguage": [
+            "en",
+            "si"
+      ],
+      "playMode": [
+            "SinglePlayer",
+            "MultiPlayer"
+      ],
+      "numberOfPlayers": {
+            "@type": "QuantitativeValue",
+            "minValue": 1,
+            "maxValue": 8
+      },
+      "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD",
+            "url": "https://issarahatayanna.gay/"
+      }
+}
+    </script>
+    <style>
+      /* Inline so the first visit has a complete, readable screen before JS arrives. */
+      #loading-status{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;box-sizing:border-box;overflow:auto;padding:48px 28px;background:#10251f;color:#f6f4e9;font-family:'DM Sans',system-ui,sans-serif;text-align:left}
+      #loading-status[hidden]{display:none}
+      #loading-status::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 72% 35%,#9fb5690d,transparent 60%)}
+      .loading-content{position:relative;width:min(100%,660px);margin:auto}
+      .loading-topline{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:62px}
+      .loading-brand{font-size:11px;font-weight:700;letter-spacing:2.1px;color:#d9ee89;line-height:1.6}
+      .loading-location{font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:#a8b7a9;white-space:nowrap}
+      .loading-eyebrow{font-size:10px;font-weight:600;letter-spacing:2.4px;color:#d9ee89;margin:0 0 18px;text-transform:uppercase}
+      #loading-status h1{max-width:620px;font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(38px,6.5vw,64px);font-weight:500;letter-spacing:-2.8px;line-height:1.06;margin:0 0 22px;text-wrap:balance}
+      #loading-status p{font-size:14px;line-height:1.75;color:#becbbf;margin:0;max-width:430px}
+      #loading-status .loading-intro{color:#becbbf;max-width:420px}
+      .loading-scene{position:relative;margin:33px 0 24px;padding:0 0 12px;overflow:hidden;border-bottom:1px solid #d9ee8930;color:#d9ee89}
+      .loading-ascii{font:12px/1.18 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:0;white-space:pre;margin:0 0 0 8%;width:max-content;animation:loading-idle 2.8s ease-in-out infinite}
+      .loading-road{height:1px;margin-top:12px;background:repeating-linear-gradient(90deg,#d9ee8965 0 24px,transparent 24px 42px);animation:loading-road 2s linear infinite}
+      .loading-milestones{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:0 0 24px;padding:0}
+      .loading-milestones li{display:flex;align-items:center;gap:8px;color:#a2b3a5;font-size:11px;line-height:1.5}
+      .loading-milestones li::before{content:'';flex:none;width:5px;height:5px;border:1px solid #758f7a;border-radius:50%}
+      .loading-milestones [data-state=loading]{color:#e8efdc}
+      .loading-milestones [data-state=loading]::before{background:#d9ee89;border-color:#d9ee89;box-shadow:0 0 0 4px #d9ee8910;animation:loading-pulse 1.6s ease-in-out infinite}
+      .loading-milestones [data-state=complete]{color:#d9ee89}
+      .loading-milestones [data-state=complete]::before{background:#d9ee89;border-color:#d9ee89}
+      #loading-status [data-loading-detail]{font-size:12px;color:#d4ddce;min-height:21px}
+      .loading-footnote{border-top:1px solid #ffffff10;margin-top:29px;padding-top:17px;display:flex;gap:20px;justify-content:space-between}
+      #loading-status .loading-footnote p{font-size:10px;line-height:1.7;color:#9aaf9f;max-width:360px}
+      .loading-footnote span{font:10px/1.7 ui-monospace,monospace;color:#9aaf9f;white-space:nowrap}
+      #loading-status [data-loading-slow]{font-size:12px;line-height:1.7;color:#becbbf;margin-top:15px}
+      #loading-status button{margin-top:18px;border:1px solid #d9ee8970;border-radius:8px;background:transparent;color:#d9ee89;padding:11px 22px;min-height:44px;font:500 12px 'DM Sans',system-ui,sans-serif;cursor:pointer}
+      #loading-status button[hidden],#loading-status [hidden]{display:none}
+      #loading-status button:hover{background:#d9ee8910}
+      #loading-status button:focus-visible{outline:2px solid #d9ee89;outline-offset:4px}
+      .loading-failed .loading-scene,.loading-failed .loading-milestones{opacity:.4}
+      .loading-failed .loading-ascii,.loading-failed .loading-road,.loading-failed .loading-milestones [data-state=loading]::before{animation:none}
+      @keyframes loading-road{to{background-position:-84px 0}}
+      @keyframes loading-idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+      @keyframes loading-pulse{50%{opacity:.45}}
+      @media(max-width:540px){#loading-status{padding:32px 24px}.loading-topline{margin-bottom:43px;align-items:flex-start}.loading-brand{font-size:9px;letter-spacing:1.5px;max-width:150px}.loading-location{font-size:8px;letter-spacing:1.1px}#loading-status h1{font-size:42px;letter-spacing:-2px}#loading-status .loading-intro{font-size:13px}.loading-milestones{grid-template-columns:repeat(2,1fr);gap:12px 20px}.loading-ascii{font-size:11px;margin-left:3%}.loading-footnote{gap:12px}.loading-footnote span{display:none}}
+      @media(max-height:670px){#loading-status{padding-top:26px;padding-bottom:26px}.loading-topline{margin-bottom:28px}.loading-scene{margin-top:23px;margin-bottom:18px}.loading-footnote{margin-top:20px}}
+      @media(prefers-reduced-motion:reduce){.loading-ascii,.loading-road,.loading-milestones [data-state=loading]::before{animation:none}}
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
@@ -14,10 +112,48 @@
     <link rel="preload" href="/src/assets/nil-kirilli-mural.jpg" as="image" crossorigin fetchpriority="low" />
   </head>
   <body>
-    <canvas id="game" aria-label="Scenic three-dimensional bus driving world"></canvas>
+    <details id="game-about" class="game-about">
+      <summary>About ISSARAHATA YANNA</summary>
+      <div class="game-about-copy">
+        <h2>Sri Lankan bus simulator game</h2>
+        <p>ISSARAHATA YANNA, also known by its full name MADA PELIYA ISSARAHATA YANNA, brings Sri Lankan bus culture to your browser. Your next favorite drive: the best bus simulator game in Sri Lanka.</p>
+        <p>Drive a decorated Sri Lankan bus along coastal roads and through the highlands. Choose daylight, sunset or night, add your own Sinhala or English bus signs, and stop to pick up passengers. Play solo or invite friends to a private convoy with up to 8 buses. It is free to play, with no download required.</p>
+        <p lang="si">ලංකාවේ හොඳම බස් simulator game eka</p>
+        <p lang="si">ශ්‍රී ලංකාවේ හොඳම බස් සිමියුලේටර් ක්‍රීඩාව. ඔබේ බස් රථයට සිංහල හෝ ඉංග්‍රීසි පණිවිඩ එක් කර, වෙරළබඩ සහ කඳුකර මාර්ගවල ධාවනය කරන්න. තනිවම හෝ මිතුරන් සමඟ නොමිලේ ක්‍රීඩා කරන්න.</p>
+        <p>Use W A S D or the arrow keys to drive, Space to brake, C to change the camera and H to sound the horn. Touch controls are available on mobile. Open How to play in the garage for all controls.</p>
+      </div>
+    </details>
+    <canvas id="game" aria-label="Scenic three-dimensional bus driving world" aria-hidden="true"></canvas>
     <div class="world-shade" aria-hidden="true"></div>
-    <div id="ui"></div>
-    <div id="loading-status" role="status">Finding the scenic route<span>Preparing your bus…</span></div>
+    <div id="ui" inert aria-busy="true"></div>
+    <div id="loading-status" aria-label="Preparing your drive">
+      <div class="loading-content">
+        <div class="loading-topline"><div class="loading-brand">ISSARAHATA YANNA</div><div class="loading-location">Sri Lanka · The open road</div></div>
+        <div class="loading-eyebrow">Before the journey</div>
+        <h1>Good roads<br>take a moment.</h1>
+        <p class="loading-intro">Your bus. A little island. A road worth taking.<br>We’re getting everything ready for your first drive.</p>
+        <div class="loading-scene" aria-hidden="true">
+          <pre class="loading-ascii">        __________________________
+       /  _  _  _  _  _  _  _    \
+      |  |_| |_| |_| |_| |_|  |  |
+      |  I S S A R A H A T A   |  |
+      |_______________________|__|
+       '--(O)------------(O)----'</pre>
+          <div class="loading-road"></div>
+        </div>
+        <ol class="loading-milestones" aria-label="Preparation milestones">
+          <li data-loading-stage="bus" data-state="loading">Your bus</li>
+          <li data-loading-stage="lettering" data-state="pending">The lettering</li>
+          <li data-loading-stage="sounds" data-state="pending">The sounds</li>
+          <li data-loading-stage="world" data-state="pending">The open road</li>
+        </ol>
+        <p data-loading-detail role="status" aria-live="polite" aria-atomic="true">Bringing your Sri Lankan bus to the garage.</p>
+        <p data-loading-slow hidden>This first visit can take a little longer while your bus and scenery download. We’re still getting things ready.</p>
+        <button type="button" hidden>Reload</button>
+        <div class="loading-footnote"><p>A little more to bring along on your first visit.<br>Next time, your browser can remember the way.</p><span>NO RUSH. JUST ROADS.</span></div>
+      </div>
+    </div>
+    <noscript><div style="position:fixed;inset:0;z-index:1001;display:grid;place-items:center;background:#14251f;color:#f5f3e7;font:16px system-ui;padding:24px">Enable JavaScript to start ISSARAHATA YANNA.</div></noscript>
     <div id="error-status" role="alert" hidden></div>
     <script type="module" src="/src/main.js"></script>
   </body>

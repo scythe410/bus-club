@@ -1,3 +1,4 @@
+import {collisionMotion, updateCollisionStates} from '../shared/collisions.js';
 import {validSound,SOUND_COOLDOWN_MS} from '../shared/soundboard.js';
 import {spawnState} from '../shared/spawn.js';
 import {DurableObject} from 'cloudflare:workers';
@@ -28,7 +29,7 @@ function state(input) {
     result[key]=input[key];
   }
   result.y=Number.isFinite(input.y)&&Math.abs(input.y)<1e7?input.y:0;
-  return result;
+  return {...result,...collisionMotion(input)};
 }
 
 /** One coordination object per convoy. Hibernates when drivers stop sending updates. */
@@ -107,7 +108,15 @@ export class BusRoom extends DurableObject {
         data.joined=true;ws.serializeAttachment(data);this.publishRoom();return;
       }
       if(!data.joined)throw Error('Join a convoy first.');
-      if(msg.type==='state'){data.state=state(msg.state??msg);ws.serializeAttachment(data);this.queueSnapshot();return;}
+      if(msg.type==='state'){
+        const input=msg.state??msg,incoming=state(input),impact=input.impact?state(input.impact):null;
+        const players=this.active().map(peer=>({ws:peer,...peer.deserializeAttachment()})).filter(p=>p.joined);
+        const changed=updateCollisionStates(players,data.id,incoming,impact);
+        // Store revisions with each hibernating socket before sending corrections.
+        for(const p of players){const saved=p.ws.deserializeAttachment();p.ws.serializeAttachment({...saved,state:p.state});}
+        for(const p of changed)this.send(p.ws,{type:'collision',state:p.state});
+        this.queueSnapshot();return;
+      }
       if(msg.type==='sound') {
         if(!validSound(msg.soundId))throw Error('Invalid sound.');
         if(now-(data.soundAt??-Infinity)<SOUND_COOLDOWN_MS)return;

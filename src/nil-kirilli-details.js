@@ -127,15 +127,18 @@ export function createNilKirilliDetails() {
   for (const x of [-.67, -.96]) rod([[x, .9, -4.915], [x, 2.6, -4.915], [x, 2.91, -4.68]], .018, chrome);
   for (let i = 0; i < 8; i++) box(.31, .025, .04, chrome, -.815, 1.02 + i * .225, -4.92, .007);
 
-  // Rear stacked amber/red lamps, framed individually like the touring coach.
-  for (const x of [-.76, .85]) {
-    box(.28, .55, .055, chrome, x, .96, -4.9, .025);
+  // The ND-4138 rear reference has two horizontal three-lamp banks beside
+  // the registration, rather than the vertical lamp stacks of the donor bus.
+  for (const x of [-.73, .82]) {
+    box(.59, .205, .055, chrome, x, 1.22, -4.9, .025);
     for (let i = 0; i < 3; i++) {
-      const y = 1.13 - i * .17;
-      box(.235, .14, .025, black, x, y, -4.938, .015);
-      box(.195, .105, .022, i === 0 ? amber : red, x, y, -4.962, .01);
+      const lampX = x + (i - 1) * .185;
+      box(.17, .17, .025, black, lampX, 1.22, -4.938, .015);
+      box(.135, .13, .022, i === 0 ? amber : red, lampX, 1.22, -4.962, .01);
     }
   }
+  box(.61, .205, .035, chrome, .045, 1.22, -4.91, .015);
+  box(.55, .16, .02, gold, .045, 1.22, -4.938, .009);
   for (const y of [.46, .61]) box(2.11, .065, .12, chrome, .045, y, -4.925, .025);
   box(1.88, .27, .045, blue, .045, .205, -4.72, .02);
   box(1.85, .024, .053, chrome, .045, .095, -4.724, .007);

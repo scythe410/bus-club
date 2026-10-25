@@ -4,6 +4,13 @@ import {createUI} from './ui.js';
 import {RoomClient} from './network.js';
 import {BusAudio} from './audio.js';
 import {SOUNDS,SOUND_COOLDOWN_MS} from '../shared/soundboard.js';
+import {loadRearTextFont} from './rear-text.js';
+import {createLoadingScreen} from './loading-screen.js';
+import {setupReveals,revealSection} from './reveal.js';
+
+const loading=createLoadingScreen({overlay:document.querySelector('#loading-status'),ui:document.querySelector('#ui'),canvas:document.querySelector('#game')});
+revealSection(document.querySelector('#loading-status'),{selector:'h1',duration:580});
+let assetsReady=false;
 
 let game,network,ui,driving=false,paused=false,sound=true,profileTimer,spawnedId=null;
 try{sound=localStorage.getItem('bus-club-sound')!=='off';}catch{}
@@ -25,7 +32,15 @@ const setPause=(value,{garage=false}={})=>{
   paused=value;audio.setActive(driving&&!paused);game?.setPaused(value||!driving);if(garage)game?.setGarage(true);ui.setPaused(value&&!garage);
   if(value){for(const key in input)input[key]=false;game?.setInput({throttle:0,brake:0,steer:0});}
 };
-const go=()=>{driving=true;paused=false;game?.start();game?.setPaused(false);ui.setDriving(true);ui.setPaused(false);if(sound)audio.enable(true).catch(()=>{});};
+const go=async()=>{
+  if(!assetsReady){ui.setDriving(false);return;}
+  // A player may select again while a variant is loading. Drive only once the
+  // latest request, including its cabin and livery, has settled.
+  let pending,loaded;
+  do{pending=game.bus.ready;loaded=await pending;}while(pending!==game.bus.ready);
+  if(!loaded){ui.setDriving(false);toast('That bus could not load. Select another bus or reload to try again.');return;}
+  driving=true;paused=false;game.start();game.setPaused(false);ui.setDriving(true);ui.setPaused(false);if(sound)audio.enable(true).catch(()=>{});
+};
 
 ui=createUI({
   onDrive:go,
@@ -61,6 +76,7 @@ ui=createUI({
 });
 
 ui.setSound(sound);
+setupReveals(document.querySelector('#ui'));
 
 network=new RoomClient({
   onRoom:room=>{
@@ -71,6 +87,7 @@ network=new RoomClient({
   },
   onSound:id=>playSound(id),
   onPeers:peers=>game?.setPeers(peers),
+  onCollision:state=>game?.applyCollisionState(state),
   onError:message=>toast(message),
   onStatus:status=>{
     if(status==='connecting')toast('Connecting to your convoy…');
@@ -85,18 +102,28 @@ try{
     onPickup:data=>toast(`Bus stop reached · ${data.passengers||1} passengers aboard`),
   });
   const profile=ui.getProfile();syncProfile();game.setEnvironment(profile.environment||'coast');game.setTime(profile.time||'sunset');game.setQuality(profile.quality||'auto');
-  game.bus.ready.then(loaded=>{
-    document.querySelector('#loading-status')?.setAttribute('hidden','');
-    if(!loaded)toast('The Sri Lanka bus could not load. You can keep driving the classic bus; reload to try again.');
+  loading.stage('bus','loading');
+  loading.stage('lettering','loading');
+  loading.stage('sounds','loading');
+  const busReady=game.bus.ready.then(async loaded=>{
+    if(!loaded)throw Error('Your bus could not download. Check your connection and reload to try again.');
+    if(await game.bus.skinReady===false)throw Error('Your saved bus artwork could not load. Reload to try again.');
+    loading.stage('bus','complete');
   });
-  setInterval(()=>{if(driving)network.sendState(game.getState());},75);
+  const fontReady=loadRearTextFont().then(()=>document.fonts?.ready).then(()=>loading.stage('lettering','complete'));
+  const soundsReady=audio.downloadSounds().then(()=>loading.stage('sounds','complete'));
+  void loading.wait([busReady,fontReady,soundsReady],async()=>{
+    // The first visible frame has its shaders and textures prepared too.
+    await game.renderer.compileAsync(game.scene,game.camera);
+  }).then(()=>{assetsReady=true;}).catch(error=>{console.error(error);loading.fail(error.message);});
+  setInterval(()=>{if(driving)network.sendState(()=>game.getState());},75);
   const invited=new URL(location.href).searchParams.get('room');
   if(invited)network.join(invited,profile).catch(error=>toast(error.message));
 }catch(error){
   console.error(error);
   const target=document.querySelector('#error-status');
   if(target){target.hidden=false;target.textContent='The 3D world could not start. Enable hardware acceleration in Chrome, then reload.';}
-  const loading=document.querySelector('#loading-status');if(loading)loading.hidden=true;
+  loading.release();
 }
 
 document.addEventListener('keydown',event=>{

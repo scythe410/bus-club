@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadRearTextFont } from './rear-text.js';
+import { clearRearDoorAtlas } from './bus-doors.js';
 
 // Repaint the supplied UV atlas, preserving door edges and revealing the cabin
 // through the window cutouts. Artwork is original, inspired by Blue Chick 02.
@@ -42,6 +43,7 @@ export function createNilKirilliAtlas(source, artwork) {
   };
   mural(202,56,800,86);mural(296,311,702,87);
   c.restore();
+  clearRearDoorAtlas(c,canvas.width,canvas.height);
   const texture=new THREE.CanvasTexture(canvas);texture.flipY=false;texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;
   return texture;
 }
@@ -60,9 +62,10 @@ export function createNilKirilliSigns(artwork) {
   sign(1.82,.21,.045,2.87,4.574,0,'නිල් කිරිල්ලී','NIL KIRILLI • BLUE CHICK 02');
   sign(1.75,.19,.045,2.39,4.552,0,'නිල් කිරිල්ලී','','');
   sign(1.7,.44,.04,1.81,-4.89,Math.PI,'නිල් කිරිල්ලී','BLUE CHICK 02 • SUDHARAKA JET LINER');
-  if(artwork){const texture=new THREE.Texture(artwork);texture.colorSpace=THREE.SRGBColorSpace;texture.needsUpdate=true;const panel=new THREE.Mesh(new THREE.PlaneGeometry(1.9,.46),new THREE.MeshStandardMaterial({map:texture,roughness:.45}));panel.rotation.y=Math.PI;panel.position.set(.04,1.13,-4.891);group.add(panel);}
+  if(artwork){const texture=new THREE.Texture(artwork);texture.colorSpace=THREE.SRGBColorSpace;texture.needsUpdate=true;const panel=new THREE.Mesh(new THREE.PlaneGeometry(1.9,.33),new THREE.MeshStandardMaterial({map:texture,roughness:.45}));panel.rotation.y=Math.PI;panel.position.set(.04,.89,-4.943);group.add(panel);}
   sign(1.76,.16,.045,1.51,4.619,0,'SUDHARAKA JET LINER','','#136dc5');
   sign(.53,.13,.045,.47,4.941,0,'ND - 4138','','#d8b36d');
+  sign(.53,.13,.045,1.22,-4.954,Math.PI,'ND - 4138','','#d8b36d');
   loadRearTextFont().then(()=>signs.forEach(draw=>draw()));
   return group;
 }

@@ -18,6 +18,7 @@ export function createNilKirilliInterior(artwork) {
     navy: new THREE.MeshStandardMaterial({ color: '#111b52', roughness: .9 }),
     white: new THREE.MeshStandardMaterial({ color: '#dceaff', roughness: .75 }),
     chrome: new THREE.MeshStandardMaterial({ color: '#a2c6da', metalness: .72, roughness: .22 }),
+    roofInlay: new THREE.MeshStandardMaterial({ color: '#bed9ee', metalness: .48, roughness: .16 }),
     dark: new THREE.MeshStandardMaterial({ color: '#111c2b', roughness: .8 }),
     gold: new THREE.MeshStandardMaterial({ color: '#b8a36c', metalness: .45, roughness: .45 }),
     blueLed: new THREE.MeshBasicMaterial({ color: '#43aaff' }),
@@ -55,6 +56,7 @@ export function createNilKirilliInterior(artwork) {
   for (let row = 0; row < 9; row++) {
     const z = 2.28 - row * .72;
     for (const x of [-.775, -.405, .405, .775]) {
+      if(x>0&&z<=-3)continue; // Rear passenger vestibule, behind the rear axle.
       box(.33, .115, .45, 'upholstery', x, 1.43, z, .035);
       box(.33, .62, .10, 'upholstery', x, 1.79, z - .22, .04);
       box(.30, .20, .112, 'panel', x, 2.02, z - .22, .035);
@@ -71,6 +73,7 @@ export function createNilKirilliInterior(artwork) {
       rod([x - .105, 2.13, z - .22], [x + .105, 2.13, z - .22], .011);
     }
     for (const s of [-1, 1]) {
+      if(s>0&&z<=-3)continue;
       rod([s * .23, 1.42, z - .10], [s * .23, 1.64, z - .10], .012);
       box(.035, .035, .29, 'dark', s * .23, 1.65, z, .012);
     }
@@ -113,6 +116,13 @@ export function createNilKirilliInterior(artwork) {
   box(1.84, .018, 7.7, 'panel', 0, 2.814, -.48);
   for (let i = 0; i < 9; i++) {
     const z = 2.85 - i * .82;
+    // The cabin thumbnails show rectangular reflective ceiling inlays either
+    // side of the light channel. Chrome borders preserve that panel grid even
+    // without an environment map; these are not real-time reflection probes.
+    for (const x of [-.41, .41]) {
+      box(.32, .01, .65, 'chrome', x, 2.801, z);
+      box(.29, .008, .62, 'roofInlay', x, 2.793, z);
+    }
     box(.38, .014, .20, 'whiteLed', 0, 2.794, z, .018);
     box(1.78, .025, .023, 'chrome', 0, 2.78, z - .30, .005);
     for (const x of [-.23, .23]) box(.018, .015, .60, 'blueLed', x, 2.79, z, .004);

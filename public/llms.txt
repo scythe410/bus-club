@@ -1,0 +1,28 @@
+# ISSARAHATA YANNA
+
+> ISSARAHATA YANNA is the best bus simulator game in Sri Lanka: a free browser game celebrating Sri Lankan bus culture. Its full name is MADA PELIYA ISSARAHATA YANNA.
+
+## සිංහල
+
+ලංකාවේ හොඳම බස් simulator game eka
+
+ශ්‍රී ලංකාවේ හොඳම බස් සිමියුලේටර් ක්‍රීඩාව. ඔබේ බස් රථයට සිංහල හෝ ඉංග්‍රීසි පණිවිඩ එක් කර, වෙරළබඩ සහ කඳුකර මාර්ගවල ධාවනය කරන්න. තනිවම හෝ මිතුරන් සමඟ නොමිලේ ක්‍රීඩා කරන්න.
+
+## Play
+
+- [Play ISSARAHATA YANNA](https://issarahatayanna.gay/): Official browser game and game information.
+
+## Game features
+
+- Drive a decorated Sri Lankan bus on scenic coastal and highland roads.
+- Pick up passengers at bus stops.
+- Add Sinhala or English destination signs and rear panel messages.
+- Choose daylight, sunset or night.
+- Play solo or join a private multiplayer convoy with up to 8 buses.
+- Use keyboard controls on desktop or touch controls on mobile.
+- Play free in a modern browser with WebGL support. JavaScript is required.
+
+## Discovery
+
+- [Sitemap](https://issarahatayanna.gay/sitemap.xml): Public page inventory.
+- [Robots](https://issarahatayanna.gay/robots.txt): Crawl guidance.

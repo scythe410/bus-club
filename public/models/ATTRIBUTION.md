@@ -17,3 +17,17 @@ chrome/gold front equipment, mirrors, rear lamps/ladder/trim, Sinhala signage,
 and an original AI-generated blue airbrush mural. The original GLB file remains
 unmodified. Reference sources and approximation limits are documented in
 `review/nil-kirilli-reference.md`.
+
+Dam Rajina / S & S Group adaptation (2026): independently cached runtime variant
+of the same licensed GLB, with magenta UV repaint, original pale sweeping artwork,
+Sinhala/English signs, rounded front crown, lower chrome bullbar, LED rear lamps,
+burgundy/cream seating and decorated cabin ceiling. No third-party game skins or
+models are included. Google Images reference sources and remaining approximations
+are documented in `review/bus-references.md`. Both variants retain the original
+model attribution and share the original unchanged GLB file.
+
+Dam Rajina mural update (2026): an original AI-generated magenta macaw, silver
+tribal scrollwork and floral mural replaces the initial simple painted curves.
+Both buses add independent rear passenger door geometry and UV cutouts. These
+are runtime adaptations of the same credited GLB. See
+`review/dam-rajina-mural.md` for the generation prompt, references and assumptions.

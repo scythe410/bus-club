@@ -18,7 +18,7 @@ test('three real clients share state and customized skins, including late joiner
  const a=await client(),b=await client(),c=await client();
  try {
   const image='data:image/png;base64,aGVsbG8=';
-  const mixedText='සුබ ගමන්\nSafe travels';const hostProfile=profile('A',image);hostProfile.skin.rearText=mixedText;
+  const mixedText='සුබ ගමන්\nSafe travels';const hostProfile=profile('A',image);hostProfile.skin.rearText=mixedText;hostProfile.skin.modelId='dam-rejina';
   a.send({type:'create',profile:hostProfile});const room=await a.wait('room');
   b.send({type:'join',code:room.code,profile:profile('B')});const two=await b.wait('room',m=>m.players.length===2);
   const initialHost=two.players.find(p=>p.name==='A'),initialFriend=two.players.find(p=>p.name==='B');
@@ -27,12 +27,15 @@ test('three real clients share state and customized skins, including late joiner
   await b.wait('snapshot',m=>m.players.some(p=>p.id===room.selfId&&p.x===42));
   c.send({type:'join',code:room.code,profile:profile('C')});const joined=await c.wait('room',m=>m.players.length===3);
   assert.equal(joined.players.find(p=>p.name==='A').skin.image,image);
+  assert.equal(joined.players.find(p=>p.name==='A').skin.modelId,'dam-rejina','late joiners see the selected base model');
   assert.equal(joined.players.find(p=>p.name==='A').skin.rearText,mixedText,'late joiners receive Sinhala and English rear-panel messages intact');
   const leader=joined.players.find(p=>p.name==='A'),late=joined.players.find(p=>p.name==='C');
   assert.ok(Math.hypot(leader.x-late.x,leader.z-late.z)<35,'Late joiner follows the current convoy position');
   const snapshot=await c.wait('snapshot',m=>m.players.some(p=>p.id===room.selfId&&p.x===42));
   assert.equal(snapshot.players.find(p=>p.id===room.selfId).speed,12);
-  b.send({type:'profile',profile:profile('Updated')});await c.wait('room',m=>m.players.some(p=>p.name==='Updated'));
+  const updated=profile('Updated');updated.skin.modelId='nil-kirilli';
+  b.send({type:'profile',profile:updated});const changed=await c.wait('room',m=>m.players.some(p=>p.name==='Updated'));
+  assert.equal(changed.players.find(p=>p.name==='Updated').skin.modelId,'nil-kirilli','model changes travel with profile updates');
   a.ws.close();await b.wait('room',m=>m.players.length===2&&!m.players.some(p=>p.id===room.selfId));assert.ok(app.rooms.has(room.code));
  } finally {a.ws.terminate();b.ws.terminate();c.ws.terminate();await delay(30);}
 });
@@ -80,4 +83,24 @@ test('soundboard relays all nine sounds only to room peers, validates IDs and li
   const response=await fetch(base.replace('ws:','http:').replace('/ws','/sounds/dry-fart.mp3'));
   assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'audio/mpeg');
  } finally {a.ws.terminate();b.ws.terminate();outsider.ws.terminate();await delay(30);}
+});
+
+test('server resolves bus impacts for both clients and protects corrections from stale packets',async()=>{
+ const a=await client(),b=await client();
+ try {
+  a.send({type:'create',profile:profile('A')});const room=await a.wait('room');
+  b.send({type:'join',code:room.code,profile:profile('B')});const joined=await b.wait('room');
+  const bId=joined.selfId;
+  b.send({type:'state',state:{x:100,z:110.8,yaw:0,speed:0}});
+  await a.wait('snapshot',m=>m.players.some(p=>p.id===bId&&p.x===100));
+  a.send({type:'state',state:{x:100,z:100,yaw:0,speed:30}});
+  const hitA=await a.wait('collision'),hitB=await b.wait('collision');
+  assert.ok(hitA.state.speed<15);assert.ok(hitB.state.speed>15);
+  assert.ok(hitB.state.z-hitA.state.z>=11);
+  b.send({type:'state',state:{x:100,z:110.8,yaw:0,speed:0}});
+  await delay(30);
+  assert.equal(app.rooms.get(room.code).players.get(bId).state.speed,hitB.state.speed);
+  b.send({type:'state',state:{...hitB.state,z:150}});
+  await a.wait('snapshot',m=>m.players.some(p=>p.id===bId&&p.z===150));
+ } finally {a.ws.terminate();b.ws.terminate();await delay(30);}
 });

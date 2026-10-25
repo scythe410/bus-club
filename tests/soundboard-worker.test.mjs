@@ -25,3 +25,18 @@ test('Cloudflare room relays nine valid sounds, persists cooldown and excludes s
  room.webSocketMessage(pending,JSON.stringify({type:'sound',soundId:1}));
  assert.equal(pending.messages.at(-1).message,'Join a convoy first.');
 });
+
+test('Cloudflare collisions persist both corrections through hibernation and reject stale updates',()=>{
+ const host=socket('host'),peer=socket('peer');
+ host.data.state={x:0,z:0,yaw:0,speed:0};peer.data.state={x:0,z:10.8,yaw:0,speed:0};
+ const room=Object.create(BusRoom.prototype);room.ctx={getWebSockets:()=>[host,peer]};room.queueSnapshot=()=>{};
+ room.webSocketMessage(host,JSON.stringify({type:'state',state:{x:0,z:0,yaw:0,speed:30}}));
+ const hitA=host.messages.at(-1),hitB=peer.messages.at(-1);
+ assert.equal(hitA.type,'collision');assert.equal(hitB.type,'collision');
+ assert.ok(hitA.state.speed<15);assert.ok(hitB.state.speed>15);
+ assert.equal(peer.data.state.collisionRevision,1);
+ room.webSocketMessage(peer,JSON.stringify({type:'state',state:{x:0,z:10.8,yaw:0,speed:0}}));
+ assert.equal(peer.data.state.speed,hitB.state.speed);
+ room.webSocketMessage(peer,JSON.stringify({type:'state',state:{...hitB.state,z:40}}));
+ assert.equal(peer.data.state.z,40);
+});

@@ -8,6 +8,7 @@ export function createCockpit() {
   const cockpit = new THREE.Group();
   cockpit.name = 'Driver cockpit';
   const trim = new THREE.MeshStandardMaterial({ color: '#103b75', roughness: .94 });
+  trim.userData.busCockpitTrim = true;
   const metal = new THREE.MeshStandardMaterial({ color: '#65716c', roughness: .62, metalness: .35 });
   const rubber = new THREE.MeshStandardMaterial({ color: '#111917', roughness: .92 });
 
