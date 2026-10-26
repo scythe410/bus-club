@@ -16,6 +16,11 @@ Everyone then starts their own bus. Friends spawn side by side near the current 
 including when the first driver has already left the starting area.
 Rooms exist while at least one participant remains.
 
+Startup shows a white Libraries.dev `thinking-orbs` solving animation and
+“Paint gaana gaman” on textured charcoal. It stays visible for at least three
+seconds after painting and until the bus/artwork, fonts, sounds, shaders and
+first game frame are ready. The React orb is unmounted before gameplay.
+
 WASD/arrows drive; S/down brakes, then reverses. Space brakes, C cycles cameras,
 R returns to the road, H honks when sound is enabled, and Escape opens the garage.
 In Chase view, pinch to zoom and scroll with two fingers or click-drag to orbit.
@@ -86,8 +91,8 @@ Skin customization is saved on the current browser, including compressed uploade
 Terrain is deterministic and bounded to nine recycled tiles. Trees, rocks and roadside
 posts are instanced. Bus body meshes are merged by material. The Sri Lanka bus GLB adds a 5.9 MB asset download, cached and shared across convoy instances. Fog limits draw distance,
 pixel ratio is capped, quality controls shadows/resolution, and remote buses interpolate
-between network updates. The production JS download is approximately 189 KB gzip, plus the bus asset.
-Three.js is a separate cached chunk; app-only releases replace about 36 KB gzip
+between network updates. The production JS download is approximately 300 KB gzip, plus the bus asset.
+Three.js and the React orb are separate cached chunks; app-only releases replace about 61 KB gzip
 of application code. Model, mural, and Sinhala font sources live in `src/assets/`;
 Vite fingerprints their output URLs. `public/_headers` enables one-year immutable
 browser caching for `/assets/*` on Cloudflare. The model and mural fetch in parallel,

@@ -6,10 +6,11 @@ import {BusAudio} from './audio.js';
 import {SOUNDS,SOUND_COOLDOWN_MS} from '../shared/soundboard.js';
 import {loadRearTextFont} from './rear-text.js';
 import {createLoadingScreen} from './loading-screen.js';
-import {setupReveals,revealSection} from './reveal.js';
+import {setupReveals} from './reveal.js';
+import {mountLoadingOrb} from './loading-orb.js';
 
-const loading=createLoadingScreen({overlay:document.querySelector('#loading-status'),ui:document.querySelector('#ui'),canvas:document.querySelector('#game')});
-revealSection(document.querySelector('#loading-status'),{selector:'h1',duration:580});
+const disposeOrb=mountLoadingOrb(document.querySelector('#loading-orb'));
+const loading=createLoadingScreen({overlay:document.querySelector('#loading-status'),ui:document.querySelector('#ui'),canvas:document.querySelector('#game'),onFinish:disposeOrb});
 let assetsReady=false;
 
 let game,network,ui,driving=false,paused=false,sound=true,profileTimer,spawnedId=null;
@@ -102,16 +103,12 @@ try{
     onPickup:data=>toast(`Bus stop reached · ${data.passengers||1} passengers aboard`),
   });
   const profile=ui.getProfile();syncProfile();game.setEnvironment(profile.environment||'coast');game.setTime(profile.time||'sunset');game.setQuality(profile.quality||'auto');
-  loading.stage('bus','loading');
-  loading.stage('lettering','loading');
-  loading.stage('sounds','loading');
   const busReady=game.bus.ready.then(async loaded=>{
     if(!loaded)throw Error('Your bus could not download. Check your connection and reload to try again.');
     if(await game.bus.skinReady===false)throw Error('Your saved bus artwork could not load. Reload to try again.');
-    loading.stage('bus','complete');
   });
-  const fontReady=loadRearTextFont().then(()=>document.fonts?.ready).then(()=>loading.stage('lettering','complete'));
-  const soundsReady=audio.downloadSounds().then(()=>loading.stage('sounds','complete'));
+  const fontReady=loadRearTextFont().then(()=>document.fonts?.ready);
+  const soundsReady=audio.downloadSounds();
   void loading.wait([busReady,fontReady,soundsReady],async()=>{
     // The first visible frame has its shaders and textures prepared too.
     await game.renderer.compileAsync(game.scene,game.camera);

@@ -64,45 +64,16 @@
 }
     </script>
     <style>
-      /* Inline so the first visit has a complete, readable screen before JS arrives. */
-      #loading-status{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;box-sizing:border-box;overflow:auto;padding:48px 28px;background:#10251f;color:#f6f4e9;font-family:'DM Sans',system-ui,sans-serif;text-align:left}
-      #loading-status[hidden]{display:none}
-      #loading-status::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 72% 35%,#9fb5690d,transparent 60%)}
-      .loading-content{position:relative;width:min(100%,660px);margin:auto}
-      .loading-topline{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:62px}
-      .loading-brand{font-size:11px;font-weight:700;letter-spacing:2.1px;color:#d9ee89;line-height:1.6}
-      .loading-location{font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:#a8b7a9;white-space:nowrap}
-      .loading-eyebrow{font-size:10px;font-weight:600;letter-spacing:2.4px;color:#d9ee89;margin:0 0 18px;text-transform:uppercase}
-      #loading-status h1{max-width:620px;font-family:'Space Grotesk',system-ui,sans-serif;font-size:clamp(38px,6.5vw,64px);font-weight:500;letter-spacing:-2.8px;line-height:1.06;margin:0 0 22px;text-wrap:balance}
-      #loading-status p{font-size:14px;line-height:1.75;color:#becbbf;margin:0;max-width:430px}
-      #loading-status .loading-intro{color:#becbbf;max-width:420px}
-      .loading-scene{position:relative;margin:33px 0 24px;padding:0 0 12px;overflow:hidden;border-bottom:1px solid #d9ee8930;color:#d9ee89}
-      .loading-ascii{font:12px/1.18 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:0;white-space:pre;margin:0 0 0 8%;width:max-content;animation:loading-idle 2.8s ease-in-out infinite}
-      .loading-road{height:1px;margin-top:12px;background:repeating-linear-gradient(90deg,#d9ee8965 0 24px,transparent 24px 42px);animation:loading-road 2s linear infinite}
-      .loading-milestones{list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:0 0 24px;padding:0}
-      .loading-milestones li{display:flex;align-items:center;gap:8px;color:#a2b3a5;font-size:11px;line-height:1.5}
-      .loading-milestones li::before{content:'';flex:none;width:5px;height:5px;border:1px solid #758f7a;border-radius:50%}
-      .loading-milestones [data-state=loading]{color:#e8efdc}
-      .loading-milestones [data-state=loading]::before{background:#d9ee89;border-color:#d9ee89;box-shadow:0 0 0 4px #d9ee8910;animation:loading-pulse 1.6s ease-in-out infinite}
-      .loading-milestones [data-state=complete]{color:#d9ee89}
-      .loading-milestones [data-state=complete]::before{background:#d9ee89;border-color:#d9ee89}
-      #loading-status [data-loading-detail]{font-size:12px;color:#d4ddce;min-height:21px}
-      .loading-footnote{border-top:1px solid #ffffff10;margin-top:29px;padding-top:17px;display:flex;gap:20px;justify-content:space-between}
-      #loading-status .loading-footnote p{font-size:10px;line-height:1.7;color:#9aaf9f;max-width:360px}
-      .loading-footnote span{font:10px/1.7 ui-monospace,monospace;color:#9aaf9f;white-space:nowrap}
-      #loading-status [data-loading-slow]{font-size:12px;line-height:1.7;color:#becbbf;margin-top:15px}
-      #loading-status button{margin-top:18px;border:1px solid #d9ee8970;border-radius:8px;background:transparent;color:#d9ee89;padding:11px 22px;min-height:44px;font:500 12px 'DM Sans',system-ui,sans-serif;cursor:pointer}
-      #loading-status button[hidden],#loading-status [hidden]{display:none}
-      #loading-status button:hover{background:#d9ee8910}
-      #loading-status button:focus-visible{outline:2px solid #d9ee89;outline-offset:4px}
-      .loading-failed .loading-scene,.loading-failed .loading-milestones{opacity:.4}
-      .loading-failed .loading-ascii,.loading-failed .loading-road,.loading-failed .loading-milestones [data-state=loading]::before{animation:none}
-      @keyframes loading-road{to{background-position:-84px 0}}
-      @keyframes loading-idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
-      @keyframes loading-pulse{50%{opacity:.45}}
-      @media(max-width:540px){#loading-status{padding:32px 24px}.loading-topline{margin-bottom:43px;align-items:flex-start}.loading-brand{font-size:9px;letter-spacing:1.5px;max-width:150px}.loading-location{font-size:8px;letter-spacing:1.1px}#loading-status h1{font-size:42px;letter-spacing:-2px}#loading-status .loading-intro{font-size:13px}.loading-milestones{grid-template-columns:repeat(2,1fr);gap:12px 20px}.loading-ascii{font-size:11px;margin-left:3%}.loading-footnote{gap:12px}.loading-footnote span{display:none}}
-      @media(max-height:670px){#loading-status{padding-top:26px;padding-bottom:26px}.loading-topline{margin-bottom:28px}.loading-scene{margin-top:23px;margin-bottom:18px}.loading-footnote{margin-top:20px}}
-      @media(prefers-reduced-motion:reduce){.loading-ascii,.loading-road,.loading-milestones [data-state=loading]::before{animation:none}}
+      /* Visible before JavaScript and model downloads arrive. */
+      #loading-status{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;box-sizing:border-box;padding:24px;background:#202020;color:#fff;font-family:system-ui,sans-serif;text-align:center;isolation:isolate}
+      #loading-status::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.17;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' opacity='.5' d='M0 0h160v160H0z'/%3E%3C/svg%3E")}
+      .loading-content{display:flex;flex-direction:column;align-items:center;gap:20px;max-width:360px}
+      #loading-orb{width:64px;height:64px}
+      #loading-status h1{margin:0;font:400 16px/1.5 system-ui,sans-serif;letter-spacing:.02em;color:#fff}
+      #loading-status p{margin:0;font:400 13px/1.6 system-ui,sans-serif;color:#fff}
+      #loading-status button{border:1px solid #ffffff80;border-radius:8px;background:transparent;color:#fff;padding:11px 22px;min-height:44px;cursor:pointer}
+      #loading-status button:focus-visible{outline:2px solid #fff;outline-offset:4px}
+      #loading-status[hidden],#loading-status [hidden]{display:none}
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -126,31 +97,12 @@
     <canvas id="game" aria-label="Scenic three-dimensional bus driving world" aria-hidden="true"></canvas>
     <div class="world-shade" aria-hidden="true"></div>
     <div id="ui" inert aria-busy="true"></div>
-    <div id="loading-status" aria-label="Preparing your drive">
+    <div id="loading-status" aria-label="Loading game" aria-busy="true">
       <div class="loading-content">
-        <div class="loading-topline"><div class="loading-brand">ISSARAHATA YANNA</div><div class="loading-location">Sri Lanka · The open road</div></div>
-        <div class="loading-eyebrow">Before the journey</div>
-        <h1>Good roads<br>take a moment.</h1>
-        <p class="loading-intro">Your bus. A little island. A road worth taking.<br>We’re getting everything ready for your first drive.</p>
-        <div class="loading-scene" aria-hidden="true">
-          <pre class="loading-ascii">        __________________________
-       /  _  _  _  _  _  _  _    \
-      |  |_| |_| |_| |_| |_|  |  |
-      |  I S S A R A H A T A   |  |
-      |_______________________|__|
-       '--(O)------------(O)----'</pre>
-          <div class="loading-road"></div>
-        </div>
-        <ol class="loading-milestones" aria-label="Preparation milestones">
-          <li data-loading-stage="bus" data-state="loading">Your bus</li>
-          <li data-loading-stage="lettering" data-state="pending">The lettering</li>
-          <li data-loading-stage="sounds" data-state="pending">The sounds</li>
-          <li data-loading-stage="world" data-state="pending">The open road</li>
-        </ol>
-        <p data-loading-detail role="status" aria-live="polite" aria-atomic="true">Bringing your Sri Lankan bus to the garage.</p>
-        <p data-loading-slow hidden>This first visit can take a little longer while your bus and scenery download. We’re still getting things ready.</p>
+        <div id="loading-orb" aria-hidden="true"></div>
+        <h1 role="status">Paint gaana gaman</h1>
+        <p data-loading-detail role="alert" hidden></p>
         <button type="button" hidden>Reload</button>
-        <div class="loading-footnote"><p>A little more to bring along on your first visit.<br>Next time, your browser can remember the way.</p><span>NO RUSH. JUST ROADS.</span></div>
       </div>
     </div>
     <noscript><div style="position:fixed;inset:0;z-index:1001;display:grid;place-items:center;background:#14251f;color:#f5f3e7;font:16px system-ui;padding:24px">Enable JavaScript to start ISSARAHATA YANNA.</div></noscript>
