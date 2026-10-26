@@ -1,8 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createLoadingScreen} from '../src/loading-screen.js';
+import {readFile} from 'node:fs/promises';
 
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
+test('the first HTML response contains the orb before React or the game downloads',async()=>{
+  const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
+  const orb=html.match(/<div id="loading-orb"[^>]*>([\s\S]*?)<\/div>/)?.[1];
+  assert.ok(orb?.includes('<svg'),'the first paint cannot depend on a JavaScript component');
+  assert.ok((orb.match(/<circle /g)||[]).length>100,'the initial image contains the actual dotted solving sphere');
+  assert.ok(html.indexOf(orb)<html.indexOf('<script type="module"'));
+  assert.ok(html.includes('prefers-reduced-motion:reduce'));
+});
 function fixture(options={}){
   const detail={hidden:true},heading={hidden:true},retry={hidden:true,addEventListener(){}},classes=new Set();
   const overlay={hidden:false,querySelector:selector=>selector==='button'?retry:selector==='h1'?heading:detail,classList:{add:name=>classes.add(name)}};
