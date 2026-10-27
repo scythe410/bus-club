@@ -23,15 +23,16 @@ test('large authority changes snap and invalid corrections are ignored',()=>{
   assert.equal(bus.visualCorrection,null);assert.equal(bus.x,100);
   bus.applyCollisionState({x:NaN,z:0,yaw:0,speed:0});assert.equal(bus.x,100);
 });
-test('fixed physics ticks give identical integration at 30, 60 and 144 fps',()=>{
-  for(const fps of [30,60,144]){
+test('fixed physics ticks preserve real elapsed time at 5 through 144 fps and park after suspension',()=>{
+  for(const fps of [5,10,15,20,30,60,144]){
     const bus=game();let ticks=0;
     bus.step=dt=>{ticks++;bus.z+=dt;};
     for(let frame=0;frame<fps;frame++)bus.advancePhysics(1/fps);
     assert.equal(ticks,120);assert.ok(Math.abs(bus.z-1)<1e-9);
   }
   const bus=game();let ticks=0;bus.step=()=>ticks++;bus.advancePhysics(2);
-  assert.equal(ticks,6,'background stalls cannot create unbounded catch-up work');
+  assert.equal(ticks,0,'background suspension parks instead of simulating a partial stale frame');
+  assert.equal(bus.paused,true);assert.equal(bus.physicsAccumulator,0);
 });
 test('low-speed turns render continuously between physics ticks at different refresh rates',()=>{
   for(const fps of [30,60,90,120,144,165]){

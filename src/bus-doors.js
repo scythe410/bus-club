@@ -5,21 +5,28 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 // Run AFTER painting the livery: a mural must never seal the doorway again.
 export const REAR_DOOR_UV = Object.freeze({x:866,y:292,width:69,height:172});
 export const REAR_DOOR = Object.freeze({x:1.045,z:-3.57,width:.87,bottom:.43,top:2.64});
+export const FRONT_DOOR_UV = Object.freeze({x:202,y:292,width:94,height:188});
+export const FRONT_DOOR = Object.freeze({x:1.045,z:3.92,width:1.07,bottom:.43,top:2.64});
 // The pink bus has a shorter closed rear entrance beneath a painted header.
 export const DAM_REJINA_REAR_DOOR = Object.freeze({...REAR_DOOR, width:.80, bottom:.48, top:2.40});
 export function clearRearDoorAtlas(context,width,height){
   const r=REAR_DOOR_UV;
   context.clearRect(r.x*width/1024,r.y*height/512,r.width*width/1024,r.height*height/512);
 }
+export function clearFrontDoorAtlas(context,width,height){
+  const r=FRONT_DOOR_UV;
+  context.clearRect(r.x*width/1024,r.y*height/512,r.width*width/1024,r.height*height/512);
+}
 
 // Rear curbside passenger entrance behind the rear axle, located from the
 // reference silhouette and donor UVs. Fine hardware is an interpretation.
-// Closed leaves are explicit meshes, independent of the body mural.
-export function createRearPassengerDoor({color='#0876dc',artwork,modelId='nil-kirilli'}={}){
-  const group=new THREE.Group();group.name='Rear passenger door';
+// The blue reference has an open entrance; the pink variant has closed leaves.
+export function createPassengerDoor({color='#0876dc',artwork,modelId='nil-kirilli',entrance='rear'}={}){
+  const label=entrance==='front'?'Front':'Rear';
+  const group=new THREE.Group();group.name=`${label} passenger door`;
   const isDamRejina=modelId==='dam-rejina';
-  const dimensions=isDamRejina?DAM_REJINA_REAR_DOOR:REAR_DOOR;
-  group.userData={modelId,entrance:'rear',side:'left',state:'closed',leafCount:2,stepCount:isDamRejina?0:3,...dimensions};
+  const dimensions=entrance==='front'?FRONT_DOOR:isDamRejina?DAM_REJINA_REAR_DOOR:REAR_DOOR;
+  group.userData={modelId,entrance,side:'left',state:isDamRejina?'closed':'open',leafCount:2,stepCount:isDamRejina?0:3,...dimensions};
   const mats={
     paint:new THREE.MeshStandardMaterial({color,roughness:.44,metalness:.18}),
     seal:new THREE.MeshStandardMaterial({color:'#111922',roughness:.85}),
@@ -52,7 +59,7 @@ export function createRearPassengerDoor({color='#0876dc',artwork,modelId='nil-ki
     box('chrome',.079,.022,width+.08,x+.01,y,z);
   }
   const leafWidth=(width-.025)/2;
-  for(const side of [-1,1]){
+  for(const side of isDamRejina?[-1,1]:[]){
     const center=z+side*(leafWidth/2+.008);
     // Two glazed top panels and painted kick panels, divided by waist rails.
     box('panel',.038,.88,leafWidth-.025,x,1.0,center);
@@ -65,9 +72,33 @@ export function createRearPassengerDoor({color='#0876dc',artwork,modelId='nil-ki
     box('chrome',.045,.067,.014,x+.057,1.43,z+side*.054);
     for(const y of [.78,1.66,2.38])box('chrome',.047,.064,.025,x+.025,y,center+side*(leafWidth/2-.006));
   }
-  box('seal',.05,2.14,.018,x+.023,1.535,z);
-  // Keep actual treads behind the closed leaves; their outer threshold remains
-  // visible from a low side view and the cabin sees the interior handrails.
+  if(isDamRejina)box('seal',.05,2.14,.018,x+.023,1.535,z);
+  else {
+    // Both complete leaves swing inward against the two jambs. Each leaf keeps
+    // its full metal kick panel, glazed upper opening and painted steel stiles.
+    // Thin edge-on strips left the donor's hollow frames visibly unskinned.
+    const foldedWidth=(dimensions.width-.025)/2-.012,foldedX=x-.045-foldedWidth/2;
+    for(const jamb of [-1,1]){
+      const foldedZ=z+jamb*(width/2-.045);
+      box('paint',foldedWidth,.94,.034,foldedX,.985,foldedZ);
+      box('glass',foldedWidth-.075,1.035,.014,foldedX,2.055,foldedZ);
+      for(const edge of [-1,1]){
+        box('paint',.036,2.08,.04,foldedX+edge*(foldedWidth/2-.018),1.535,foldedZ);
+        box('chrome',.009,2.08,.046,foldedX+edge*(foldedWidth/2-.006),1.535,foldedZ);
+      }
+      for(const y of [.51,1.49,2.575])box('paint',foldedWidth,.055,.04,foldedX,y,foldedZ);
+      for(const y of [.54,1.46,2.605])box('chrome',foldedWidth,.018,.045,foldedX,y,foldedZ);
+      box('chrome',foldedWidth-.055,.19,.044,foldedX,.645,foldedZ);
+      box('chrome',.027,.16,.065,foldedX-foldedWidth*.28,1.49,foldedZ);
+      // Closed metal cheeks cap the sides of the recessed stairwell.
+      box('paint',.62,.58,.035,.725,.75,z+jamb*(width/2-.018));
+      box('chrome',.59,.19,.041,.725,.63,z+jamb*(width/2-.018));
+    }
+    // Stairwell risers hide the hollow body, while the treads climb to the aisle.
+    for(let i=0;i<3;i++)box('step',.027,.20,width-.05,.825-i*.20,.53+i*.205,z);
+    box('step',.23,.055,width-.05,.33,1.045,z);
+  }
+  // Three exposed anti-slip treads and bright nosings match the open entrance.
   for(let i=0;i<(isDamRejina?0:3);i++){
     const stepX=.93-i*.20,stepY=.43+i*.205;
     box('step',.23,.055,width-.05,stepX,stepY,z);
@@ -86,7 +117,8 @@ export function createRearPassengerDoor({color='#0876dc',artwork,modelId='nil-ki
   }
   for(const [key,geometries]of batches){
     const geometry=mergeGeometries(geometries);geometries.forEach(g=>g.dispose());
-    const mesh=new THREE.Mesh(geometry,mats[key]);mesh.name=`Rear door ${key}`;mesh.castShadow=key!=='glass';mesh.receiveShadow=true;group.add(mesh);
+    const mesh=new THREE.Mesh(geometry,mats[key]);mesh.name=`${label} door ${key}`;mesh.castShadow=key!=='glass';mesh.receiveShadow=true;group.add(mesh);
   }
   return group;
 }
+export const createRearPassengerDoor=options=>createPassengerDoor({...options,entrance:'rear'});

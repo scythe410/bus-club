@@ -3,7 +3,7 @@ export default {
   async fetch(request,env) {
     const url=new URL(request.url);
     if(url.pathname==='/health')return Response.json({ok:true});
-    if(url.pathname==='/ws') {
+    if(url.pathname==='/ws'||url.pathname==='/skin') {
       const code=(url.searchParams.get('room')??'').toUpperCase();
       if(!/^[A-Z0-9]{6}$/.test(code))return new Response('Invalid room code',{status:400});
       url.searchParams.set('room',code);

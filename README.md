@@ -5,7 +5,7 @@ Full game name: **MADA PELIYA ISSARAHATA YANNA**.
 ලංකාවේ හොඳම බස් simulator game eka
 
 An original browser bus driving game. Procedural coast and highlands, bus liveries,
-uploaded side skins, day/sunset/night, bus stops, and invite-code convoys for 2–8 drivers.
+uploaded side skins, day/sunset/night, bus stops, and invite-code convoys for 2–5 drivers.
 No Slow Roads code, assets, or extracted data is included.
 
 ## Play
@@ -18,8 +18,9 @@ Rooms exist while at least one participant remains.
 
 Startup shows a white Libraries.dev `thinking-orbs` solving animation and
 “Paint gaana gaman” on textured charcoal. It stays visible for at least three
-seconds after painting and until the bus/artwork, fonts, sounds, shaders and
-first game frame are ready. The React orb is unmounted before gameplay.
+seconds after painting and until the bus/artwork, fonts, shaders and
+first game frame are ready. Optional soundboard downloads do not block play.
+The React orb is unmounted before gameplay.
 
 WASD/arrows drive; S/down brakes, then reverses. Space brakes, C cycles cameras,
 R returns to the road, H honks when sound is enabled, and Escape opens the garage.
@@ -81,10 +82,21 @@ Run `npm run deploy` to build and deploy with an authenticated Cloudflare CLI.
 Cloudflare Workers Builds is connected to `scythe410/bus-club`. Pushes to `main`
 automatically run `npm test && npm run build`, then `npx wrangler deploy` from the
 repository root. Other branches do not deploy to production.
-Each room has its own Durable Object. WebSockets use hibernation; motion snapshots are
-batched, skins are only resent when profiles change, and SQL profile data is cleared
-when the last participant leaves. There are no game accounts or persistent cloud saves.
+Each room has its own Durable Object and accepts at most five drivers. WebSockets use
+hibernation and timestamped, sequenced motion samples. Existing drivers receive small
+membership/profile deltas; uploaded images download separately through versioned `/skin`
+HTTP URLs, with browser caching. SQL profile data is cleared when the last participant
+leaves. Pending join handshakes expire after ten seconds. There are no game accounts or persistent cloud saves.
 Skin customization is saved on the current browser, including compressed uploaded images.
+
+Convoy artwork uses the same profile validator on Node and Cloudflare. Only embedded
+static PNG, JPEG and WebP data is accepted: at most 192 KiB including data-URL overhead,
+2048 pixels per side and 2,097,152 total pixels. Container/header checks run before
+publication and when serving stored artwork. Animation, external artwork URLs and
+compressed PNG text/ICC metadata are rejected; re-export affected legacy artwork as
+a plain static image. These checks bound image work without decoding images on the
+server. Shared image URLs include a validation-policy version to avoid old cached bytes.
+The Node backend closes sockets on explicit leave so departed drivers release their slots.
 
 ## Performance and current scope
 
@@ -133,7 +145,7 @@ bullbar, LED rear lamp banks and a burgundy/cream cabin with decorated ceiling
 lights. Its generated side mural reproduces the macaw, fine silver tribal scrolls
 and floral pink airbrush style from enlarged real-bus photos. Both buses have
 separate rear passenger doors, glazed leaves, latches, hinges and grab rails.
-Dam Rajina uses a shorter closed rear door with no exposed steps; Nil Kirilli retains its steps;
+Dam Rajina uses a shorter closed rear door with no exposed steps; Nil Kirilli has an open rear entrance with folded leaves and three exposed steps;
 body textures leave the entrances clear and seats stop before the vestibules. Nil Kirilli has corrected horizontal rear lamp banks and reflective ceiling
 inlays. Driver name, destination and the rear message remain editable.
 Front wheels steer with the driving angle, with corrected tire axes and damped steering to avoid wobble. Shared undercarriages include chassis rails, axles, differential, suspension and wheel housings. Dam Rajina uses AI-generated side and front macaw murals, full-length Purple Queen Voyage lettering, darkened passenger/rear glazing and a dark backing behind lowered windshield decals. Custom driver-name strips are hidden from the sides. Wheels roll while driving, and the classic procedural bus remains a fallback
@@ -146,6 +158,12 @@ open `/review/model-preview.html` to select either bus and inspect orbit, front,
 rear, driver and cabin views with a day/night toggle. See `review/bus-references.md`
 for the Google Images sources and the limits of the reference recreations.
 `review/dam-rajina-mural.md` records the mural prompt and rear entrance update.
+The newer Nil Kirilli photo-reference update adds the pale woman's side mural,
+the same portrait painted across separated front grille slats, Sinhala window
+decals, SPECIAL crown, rear spoiler lettering, blue bumper and a raised chrome
+ladder. Portraits retain their proportions on both long sides. The blue passenger
+glazing leaves its rear stairwell open. See `review/nil-kirilli-replica.md` for
+saved artwork, generation prompts, review captures and accuracy limits.
 
 ## UI and handling
 
@@ -156,7 +174,7 @@ with keyboard activation. Convoy connection actions wait for a server response.
 
 The road uses two 3.5 m lanes and 0.4 m paved margins. The imported bus is scaled
 uniformly to about 10.93 m long / 2.52 m wide; solo resets use the left lane,
-and shared spawn logic places eight convoy members without overlapping.
+and shared spawn logic places five convoy members without overlapping.
 
 The bus can reach 120 km/h under sustained throttle. A lower, closer chase camera
 follows translation without falling behind at speed, with a smooth 52–63° field-of-view

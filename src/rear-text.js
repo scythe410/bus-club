@@ -62,7 +62,7 @@ export class RearTextPanel {
     this.mesh.geometry.dispose();
     this.mesh.geometry = new THREE.PlaneGeometry(1.65, .4125);
     // The normalized GLB rear shell reaches z=-4.86 below its window grilles.
-    this.mesh.position.set(.035, .84, -4.885);
+    this.mesh.position.set(.035, .84, -4.985);
   }
   draw() {
     const c = this.canvas.getContext('2d');

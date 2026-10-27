@@ -68,3 +68,38 @@ test('repeated collision corrections do not rewind a bus after it resumes moving
     if(previousLocation===undefined)delete globalThis.location;else globalThis.location=previousLocation;
   }
 });
+
+test('profile and roster deltas retain motion sample clocks and reject repeated snapshots',async()=>{
+  const previousSocket=globalThis.WebSocket,previousLocation=globalThis.location;
+  globalThis.WebSocket=Socket;globalThis.location={protocol:'http:',host:'localhost:5173'};
+  const rooms=[],peers=[];const client=new RoomClient({onRoom:room=>rooms.push(room),onPeers:players=>peers.push(players)});
+  try{
+    const pending=client.join('ABC123',{}),socket=Socket.instances.at(-1);
+    const own={id:'self',x:0,z:0,yaw:0,speed:0,stateTime:1000,stateSeq:0};
+    const friendSkin={name:'Sign',image:'/skin?room=ABC123&player=peer&revision=1&field=image'};
+    const friend={id:'peer',name:'Peer',skin:friendSkin,profileRevision:1,x:20,z:1,yaw:0,speed:10,stateTime:1000,stateSeq:0};
+    socket.message({type:'room',code:'ABC123',selfId:'self',time:1066,players:[own,friend]});await pending;
+    const initial=client.players.get('peer'),stamp=initial._sampleTime,skin=initial.skin;
+    assert.equal(skin.image,'http://localhost:5173/skin?room=ABC123&player=peer&revision=1&field=image','initial room skins resolve against the WebSocket host');
+    socket.message({type:'snapshot',time:1200,players:[friend]});
+    assert.equal(client.players.get('peer'),initial,'repeated server state retains sample age and object identity');
+    socket.message({type:'snapshot',time:1300,players:[{...friend,x:999,stateSeq:-1}]});
+    assert.equal(client.players.get('peer').x,20,'older state cannot rewind a player');
+    socket.message({type:'profile',time:1400,player:{id:'peer',name:'Renamed',skin:{...friendSkin},profileRevision:2}});
+    assert.equal(client.players.get('peer').name,'Renamed');assert.equal(client.players.get('peer').skin,skin);
+    assert.equal(client.players.get('peer')._sampleTime,stamp,'profile-only edits cannot retime motion');
+    socket.message({type:'profile',time:1500,player:{id:'peer',name:'Old name',skin:{name:'Old'},profileRevision:1}});
+    assert.equal(client.players.get('peer').name,'Renamed');
+    socket.message({type:'player',time:1600,player:{...friend,id:'new',stateSeq:0,stateTime:1600}});
+    assert.equal(client.players.size,3);assert.equal(peers.at(-1).length,2);
+    assert.equal(client.players.get('new').skin.image,skin.image,'member deltas retain resolved asset URLs');
+    socket.message({type:'left',time:1700,playerId:'new'});
+    assert.equal(client.players.size,2);assert.equal(rooms.at(-1).players.length,2);
+    socket.message({type:'snapshot',time:1800,players:[{...friend,z:9,stateTime:1800,stateSeq:1}]});
+    assert.equal(client.players.get('peer').z,9);assert.equal(client.players.get('peer').stateSeq,1);
+    assert.ok(client.players.get('peer')._sampleTime>stamp);
+  }finally{
+    client.leave();globalThis.WebSocket=previousSocket;
+    if(previousLocation===undefined)delete globalThis.location;else globalThis.location=previousLocation;
+  }
+});

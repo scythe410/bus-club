@@ -20,24 +20,31 @@ async function connect(room,intent,name,image=null){
  clients.push(client);await once(ws,'open');client.send({type:intent,code:room,profile:profile(name,image)});return client;
 }
 try {
- const roomCode=code();
+ let roomCode=code();
  const host=await connect(roomCode,'create','Smoke Host',png);const first=await host.wait('room');
+ roomCode=first.code;
  const b=await connect(roomCode,'join','Smoke B');await b.wait('room',m=>m.players.length===2);
- host.send({type:'state',state:{x:123,z:456,y:2,yaw:0.5,speed:18}});
- await b.wait('snapshot',m=>m.players.some(p=>p.id===first.selfId&&p.x===123));
+ const initial=first.players.find(p=>p.id===first.selfId),pose={...initial,z:initial.z+1,speed:18,paused:false};
+ host.send({type:'state',state:pose});
+ await b.wait('snapshot',m=>m.players.some(p=>p.id===first.selfId&&p.z===pose.z));
  const c=await connect(roomCode,'join','Smoke C');const late=await c.wait('room',m=>m.players.length===3);
- assert.equal(late.players.find(p=>p.id===first.selfId)?.skin.image,png,'Late joiner receives full image skin');
+ const assetOrigin=new URL(endpoint);assetOrigin.protocol=assetOrigin.protocol==='wss:'?'https:':'http:';
+ const imageUrl=late.players.find(p=>p.id===first.selfId)?.skin.image;
+ assert.ok(imageUrl?.startsWith('/skin?'),'Late joiner receives an HTTP skin reference');
+ const imageResponse=await fetch(new URL(imageUrl,assetOrigin));assert.equal(imageResponse.status,200);
+ assert.equal(Buffer.from(await imageResponse.arrayBuffer()).toString('base64'),png.split(',')[1],'Late joiner can fetch the original image bytes');
  assert.equal(late.players.find(p=>p.id===first.selfId)?.skin.rearText,'සුබ ගමන්\nSafe travels','Late joiner receives bilingual rear message');
- assert.equal(late.players.find(p=>p.id===first.selfId)?.x,123,'Late joiner receives current position');
+ assert.equal(late.players.find(p=>p.id===first.selfId)?.z,pose.z,'Late joiner receives current position');
  const cursor=c.cursor();b.send({type:'profile',profile:profile('Smoke B Updated',png)});
- await c.wait('room',m=>m.players.some(p=>p.name==='Smoke B Updated'&&p.skin.image===png),cursor);
+ await c.wait('profile',m=>m.player.name==='Smoke B Updated'&&m.player.skin.image?.startsWith('/skin?'),cursor);
  const afterLeave=b.cursor();host.ws.close(1000,'Smoke test host leaves');
- await b.wait('room',m=>m.players.length===2&&!m.players.some(p=>p.id===first.selfId),afterLeave);
- b.send({type:'state',state:{x:999,z:555,yaw:1,speed:20}});
- await c.wait('snapshot',m=>m.players.some(p=>p.x===999));
+ await b.wait('left',m=>m.playerId===first.selfId,afterLeave);
+ const bInitial=late.players.find(p=>p.name==='Smoke B'),bPose={...bInitial,z:bInitial.z+1,speed:20,paused:false};
+ b.send({type:'state',state:bPose});
+ await c.wait('snapshot',m=>m.players.some(p=>p.id===bInitial.id&&p.z===bPose.z));
  const missing=await connect(code(),'join','Missing Room');assert.match((await missing.wait('error')).message,/not found/i);
  await Promise.all([b,c].map(async p=>{const closed=once(p.ws,'close');p.ws.close(1000,'Smoke test complete');await closed;}));
  // A new connection to an emptied room must not restore a ghost convoy.
  const empty=await connect(roomCode,'join','Empty Room');assert.match((await empty.wait('error')).message,/not found/i);
- console.log('PASS: deployed three-player convoy, skin late join, state/profile sync, host departure, missing rooms and empty-room cleanup.');
+ console.log('PASS: three-player convoy, HTTP skin late join, state/profile deltas, host departure, missing rooms and empty-room cleanup.');
 } finally {for(const client of clients)client.ws.terminate();}

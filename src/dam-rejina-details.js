@@ -5,7 +5,7 @@ import { createDamRejinaFrontDetails } from './dam-rejina-front.js';
 
 // Coordinates share the imported bus normalization: +Z is forward, length 9.8 m.
 // Keep the ornament as geometry, so its silhouette also reads from the road camera.
-export function createDamRejinaDetails() {
+export function createDamRejinaDetails({lowDetail = false} = {}) {
   const group = new THREE.Group();
   group.name = 'Dam Rejina chrome and touring equipment';
   const materials = {
@@ -38,14 +38,14 @@ export function createDamRejinaDetails() {
     batches.get(material).push(geometry);
   };
   const box = (w, h, d, mat, x, y, z, radius = .015) =>
-    add(new RoundedBoxGeometry(w, h, d, 1, Math.min(radius, w / 3, h / 3, d / 3)), mat, x, y, z);
+    add(lowDetail ? new THREE.BoxGeometry(w, h, d) : new RoundedBoxGeometry(w, h, d, 1, Math.min(radius, w / 3, h / 3, d / 3)), mat, x, y, z);
   const cylinder = (r, depth, mat, x, y, z, rotation = new THREE.Euler(Math.PI / 2, 0, 0)) =>
-    add(new THREE.CylinderGeometry(r, r, depth, 20), mat, x, y, z, rotation);
+    add(new THREE.CylinderGeometry(r, r, depth, lowDetail ? 8 : 20), mat, x, y, z, rotation);
   const ring = (r, tube, mat, x, y, z) =>
-    add(new THREE.TorusGeometry(r, tube, 6, 24), mat, x, y, z);
+    add(new THREE.TorusGeometry(r, tube, lowDetail ? 3 : 6, lowDetail ? 10 : 24), mat, x, y, z);
   const rod = (points, radius, mat) => {
     const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
-    add(new THREE.TubeGeometry(curve, Math.max(8, points.length * 5), radius, 7, false), mat, 0, 0, 0);
+    add(new THREE.TubeGeometry(curve, Math.max(6, points.length * (lowDetail ? 2 : 5)), radius, lowDetail ? 4 : 7, false), mat, 0, 0, 0);
   };
   const { chrome, gold, blue, black, mirror, white, amber, red, redPaint, cyan } = materials;
 

@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {spawnState} from '../shared/spawn.js';
+import {ROOM_CAPACITY} from '../shared/room-config.js';
 import {roadX,roadYaw} from '../src/world.js';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 function visibleFrom(driver,friend){
@@ -24,8 +25,8 @@ test('late joiners appear safely near a friend already kilometres down a curving
   assert.ok(visibleFrom(b,a),'newcomer sees the leader when a safe staggered row is needed');
  }
 });
-test('eight buses get separate spaces and a departing driver leaves a reusable space',()=>{
- const players=[];for(let i=0;i<8;i++)players.push(spawnState(players));
+test('five buses get separate spaces and a departing driver leaves a reusable space',()=>{
+ const players=[];for(let i=0;i<ROOM_CAPACITY;i++)players.push(spawnState(players));
  for(let a=0;a<players.length;a++)for(let b=0;b<a;b++)assert.ok(distance(players[a],players[b])>=3.4);
  const remaining=players.slice(1),replacement=spawnState(remaining);
  for(const p of remaining)assert.ok(distance(p,replacement)>=3.4);
@@ -35,7 +36,7 @@ test('eight buses get separate spaces and a departing driver leaves a reusable s
 test('convoy lane positions keep the full bus width inside the road on curves',()=>{
  for(const z of [0,2400,10000,85000]){
   const states=[];
-  for(let i=0;i<8;i++){
+  for(let i=0;i<ROOM_CAPACITY;i++){
    const state=spawnState([{x:roadX(z)+20,z},...states]);states.push(state);
    const lateral=Math.abs((state.x-roadX(state.z))*Math.cos(roadYaw(state.z)));
    assert.ok(lateral+2.53/2<3.9,'full bus footprint stays on the paved road');

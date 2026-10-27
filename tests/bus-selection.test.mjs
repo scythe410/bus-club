@@ -18,7 +18,8 @@ function model(){
   const root=new THREE.Group();const wheel=panel();wheel.userData={wheel:true,radius:.5};root.add(wheel);return root;
 }
 test('saved legacy and unknown model IDs fall back to Nil Kirilli',()=>{
-  assert.deepEqual(BUS_MODEL_IDS,['nil-kirilli','dam-rejina']);
+  assert.deepEqual(BUS_MODEL_IDS,['nil-kirilli','dam-rejina','sltb']);
+  assert.equal(normalizeBusModelId('sltb'),'sltb');
   for(const value of [undefined,null,'','invalid','toString','__proto__'])assert.equal(normalizeBusModelId(value),'nil-kirilli');
 });
 test('rapid model switching discards stale downloads and preserves signs and transform',async()=>{

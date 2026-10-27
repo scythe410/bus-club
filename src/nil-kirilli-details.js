@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Coordinates share the imported bus normalization: +Z is forward, length 9.8 m.
 // Keep the ornament as geometry, so its silhouette also reads from the road camera.
-export function createNilKirilliDetails() {
+export function createNilKirilliDetails({lowDetail = false} = {}) {
   const group = new THREE.Group();
   group.name = 'Nil Kirilli chrome and touring equipment';
   const materials = {
@@ -35,14 +35,14 @@ export function createNilKirilliDetails() {
     batches.get(material).push(geometry);
   };
   const box = (w, h, d, mat, x, y, z, radius = .015) =>
-    add(new RoundedBoxGeometry(w, h, d, 1, Math.min(radius, w / 3, h / 3, d / 3)), mat, x, y, z);
+    add(lowDetail ? new THREE.BoxGeometry(w, h, d) : new RoundedBoxGeometry(w, h, d, 1, Math.min(radius, w / 3, h / 3, d / 3)), mat, x, y, z);
   const cylinder = (r, depth, mat, x, y, z, rotation = new THREE.Euler(Math.PI / 2, 0, 0)) =>
-    add(new THREE.CylinderGeometry(r, r, depth, 20), mat, x, y, z, rotation);
+    add(new THREE.CylinderGeometry(r, r, depth, lowDetail ? 8 : 20), mat, x, y, z, rotation);
   const ring = (r, tube, mat, x, y, z) =>
-    add(new THREE.TorusGeometry(r, tube, 6, 24), mat, x, y, z);
+    add(new THREE.TorusGeometry(r, tube, lowDetail ? 3 : 6, lowDetail ? 10 : 24), mat, x, y, z);
   const rod = (points, radius, mat) => {
     const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
-    add(new THREE.TubeGeometry(curve, Math.max(8, points.length * 5), radius, 7, false), mat, 0, 0, 0);
+    add(new THREE.TubeGeometry(curve, Math.max(6, points.length * (lowDetail ? 2 : 5)), radius, lowDetail ? 4 : 7, false), mat, 0, 0, 0);
   };
   const { chrome, gold, blue, black, mirror, white, amber, red, cyan } = materials;
 
@@ -65,16 +65,19 @@ export function createNilKirilliDetails() {
     cylinder(.13, .075, black, x, .9, 4.58);
     ring(.113, .024, chrome, x, .9, 4.637);
     cylinder(.096, .018, white, x, .9, 4.65);
-    for (const dx of [-.045, 0, .045]) box(.007, .155, .009, mirror, x + dx, .9, 4.663, .002);
+    for (const dx of [-.045, 0, .045]) box(.002, .155, .003, mirror, x + dx, .9, 4.663, .0008);
   }
   for (const x of [-.965, 1.065]) box(.09, .16, .055, amber, x, 1.15, 4.57);
-  box(2.1, .135, .13, chrome, .045, .66, 4.82);
+  // Smooth blue stepped bumper, with rectangular mesh inserts either side of
+  // the central gold nameplate. The reference has a painted bumper face.
+  box(2.1, .135, .13, blue, .045, .66, 4.82);
+  box(2.12, .29, .18, blue, .045, .48, 4.82, .05);
   box(2.08, .045, .15, blue, .045, .555, 4.82);
   box(.6, .165, .025, gold, .045, .47, 4.918);
   // Front bumper driving lamps and slim blue marker strip.
   for (const x of [-.84, .93]) {
     box(.22, .13, .035, chrome, x, .53, 4.904);
-    box(.18, .09, .014, white, x, .53, 4.928);
+    box(.18, .09, .014, mirror, x, .53, 4.928);
   }
   for (let i = 0; i < 9; i++) box(.048, .018, .018, cyan, -.64 + i * .17, .627, 4.899, .004);
 
@@ -124,8 +127,8 @@ export function createNilKirilliDetails() {
   box(2.12, .105, .42, blue, .04, 2.96, -4.62, .035);
   box(2.15, .025, .44, chrome, .04, 2.91, -4.62, .01);
   for (const x of [-.82, .91]) box(.065, .2, .17, blue, x, 2.82, -4.57);
-  for (const x of [-.67, -.96]) rod([[x, .9, -4.915], [x, 2.6, -4.915], [x, 2.91, -4.68]], .018, chrome);
-  for (let i = 0; i < 8; i++) box(.31, .025, .04, chrome, -.815, 1.02 + i * .225, -4.92, .007);
+  for (const x of [-.67, -.96]) rod([[x, 1.35, -4.985], [x, 2.6, -4.985], [x, 2.91, -4.68]], .023, chrome);
+  for (let i = 0; i < 8; i++) box(.31, .028, .045, chrome, -.815, 1.39 + i * .195, -4.99, .007);
 
   // The ND-4138 rear reference has two horizontal three-lamp banks beside
   // the registration, rather than the vertical lamp stacks of the donor bus.
@@ -146,15 +149,20 @@ export function createNilKirilliDetails() {
   for (let i = 0; i < 13; i++) box(.075, .025, .012, chrome, -.79 + i * .139, .155, -4.75, .005);
   for (const s of [-1, 1]) {
     const x = .045 + s * 1.01;
-    // Belt strips stop at door openings instead of bridging the entrances.
-    const beltSegments=s>0?[[.15,6.1],[-4.42,.55]]:[[-.48,8.18]];
-    for(const [z,length] of beltSegments){
-      box(.018, .025, length, chrome, x, 1.345, z, .005);
-      box(.02, .009, length, gold, x + s * .003, 1.305, z, .003);
-    }
+    // Leave the mural and both portraits clear of horizontal waist trim.
     // Split skirt strips at the wheel arches instead of crossing the tires.
     for (const [z, length] of [[-3.78, 2.03], [.22, 4.16], [3.94, 1.36]]) {
+      // The rear stair opening must remain clear even at its lowest threshold.
+      if(s>0&&z<-3)continue;
       for (const y of [.36, .455]) box(.045, .035, length, chrome, x, y, z, .009);
+    }
+    // Bright side-window rails match the silver surrounds in the photographs.
+    const glassSegments=s>0?[[.38,6.52],[-4.30,.28]]:[[-.37,8.08]];
+    for(const [z,length]of glassSegments)for(const y of [1.65,2.48])box(.014,.014,length,chrome,x,y,z,.004);
+    for(let i=0;i<10;i++){
+      const z=3.65-i*.83;
+      if(s>0&&z<-2.95&&z>-4.09)continue;
+      box(.014,.81,.013,chrome,x,2.065,z,.004);
     }
   }
 

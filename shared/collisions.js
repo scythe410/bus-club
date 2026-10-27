@@ -66,7 +66,7 @@ export function resolveBusCollision(a,b,{fixedB=false,margin=0}={}){
 
 // Solve a whole contact island together. Position projection must converge before
 // velocity constraints are solved, otherwise a third bus can push its neighbour
-// back into an already-resolved pair. Work is bounded for the eight-bus convoy.
+// back into an already-resolved pair. Work is bounded for the five-bus convoy.
 export function resolveBusCollisions(bodies,{activeBodies=null}={}){
   if(bodies.length<2)return [];
   const contacts=new Map(),active=activeBodies?new Set(activeBodies):null;
@@ -100,20 +100,33 @@ export function resolveBusCollisions(bodies,{activeBodies=null}={}){
 // Both server implementations use the same solver and revision protocol. A
 // client reports its pre-prediction contact pose so its local braking impulse
 // doesn't erase the momentum before the server can transfer it to its peer.
-export function updateCollisionStates(players,id,incoming,proposal){
+export function predictCollisionState(state,now){
+  if(!Number.isFinite(now)||!Number.isFinite(state.stateTime))return state;
+  const age=state.paused?0:clamp((now-state.stateTime)/1000,0,.15);
+  const velocity=busVelocity(state);
+  return {...state,x:state.x+velocity.x*age,z:state.z+velocity.z*age,yaw:state.yaw+(state.impactYawRate||0)*age};
+}
+export function updateCollisionStates(players,id,incoming,proposal,{now}={}){
   const self=players.find(p=>p.id===id);if(!self)return [];
   const revision=self.state.collisionRevision||0;
   if((incoming.collisionRevision||0)<revision)return [self];
   self.state={...incoming,collisionRevision:revision};
-  if(proposal&&['x','z','yaw','speed'].every(k=>Number.isFinite(proposal[k]))&&Math.hypot(proposal.x-incoming.x,proposal.z-incoming.z)<6&&Math.abs(proposal.speed)<40){
-    if(players.some(p=>p!==self&&busContact(proposal,p.state)))self.state={...self.state,...proposal,collisionRevision:revision};
-  }
   // Expand only the sender's contact island as projection finds new contacts.
   // Unrelated parked buses receive neither revisions nor correction packets.
-  const byBody=new Map(players.map(p=>[p.state,p]));
+  // Received poses belong to different instants. Compare all participants at
+  // the sender's server receipt time; unrelated stale samples stay untouched.
+  const atTime=state=>predictCollisionState(state,now);
+  if(proposal&&['x','z','yaw','speed'].every(k=>Number.isFinite(proposal[k]))&&Math.hypot(proposal.x-incoming.x,proposal.z-incoming.z)<6&&Math.abs(proposal.speed)<40){
+    if(players.some(p=>p!==self&&busContact(proposal,atTime(p.state))))self.state={...self.state,...proposal,collisionRevision:revision};
+  }
+  const byBody=new Map(players.map(p=>[atTime(p.state),p]));
+  const selfBody=[...byBody].find(([,p])=>p===self)[0];
   const changed=new Set();
-  for(const hit of resolveBusCollisions([...byBody.keys()],{activeBodies:[self.state]})){changed.add(byBody.get(hit.a));changed.add(byBody.get(hit.b));}
-  for(const p of changed)p.state.collisionRevision=(p.state.collisionRevision||0)+1;
+  for(const hit of resolveBusCollisions([...byBody.keys()],{activeBodies:[selfBody]})){changed.add(byBody.get(hit.a));changed.add(byBody.get(hit.b));}
+  for(const [body,p] of byBody)if(changed.has(p)){
+    p.state={...body,collisionRevision:(p.state.collisionRevision||0)+1};
+    if(Number.isFinite(now)){p.state.stateTime=now;p.state.stateSeq=(p.state.stateSeq||0)+1;}
+  }
   return [...changed];
 }
 export function collisionMotion(input){

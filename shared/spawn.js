@@ -16,6 +16,6 @@ export function spawnState(players=[]){
       if(!occupied)return candidate;
     }
   }
-  // Capacity is eight; the search above checks eighteen nearby positions.
+  // Capacity is five; the search above checks eighteen nearby positions.
   const z=origin-70;return {x:roadX(z)+Math.cos(roadYaw(z))*LANE_CENTER,y:0,z,yaw:roadYaw(z),speed:0};
 }

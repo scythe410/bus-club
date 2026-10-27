@@ -1,6 +1,11 @@
-import {collisionMotion, updateCollisionStates} from './shared/collisions.js';
+import {initialRoomState,updateRoomMotion,recoverRoomMotion,JOIN_TIMEOUT_MS} from './shared/room-state.js';
 import {validSound,SOUND_COOLDOWN_MS} from './shared/soundboard.js';
 import {spawnState} from './shared/spawn.js';
+import {ROOM_CAPACITY} from './shared/room-config.js';
+import {publicProfile,profileImage} from './shared/skin-assets.js';
+import {validProfile} from './shared/profile.js';
+import {MAX_IMAGE_BYTES} from './shared/skin-image.js';
+export {MAX_IMAGE_BYTES} from './shared/skin-image.js';
 import http from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -8,41 +13,10 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 
-export const MAX_IMAGE_BYTES = 192 * 1024;
 const MAX_PAYLOAD = MAX_IMAGE_BYTES + 4096;
-const ROOM_SIZE = 8;
 const MIME = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.svg':'image/svg+xml','.ico':'image/x-icon','.woff2':'font/woff2','.ttf':'font/ttf','.glb':'model/gltf-binary','.mp3':'audio/mpeg'};
 
-const DEFAULT_SKIN = {color:'#f4a261', secondary:'#fff5df', pattern:'stripe', text:'BUS CLUB', image:null};
-function validProfile(input = {}) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) throw Error('Invalid player profile.');
-  const name = String(input.name ?? 'Driver').trim().slice(0,24) || 'Driver';
-  const skin = input.skin ?? DEFAULT_SKIN;
-  if (!skin || typeof skin !== 'object' || Array.isArray(skin) || Object.keys(skin).length > 16) throw Error('Invalid bus skin.');
-  const clean = {};
-  for (const [key,value] of Object.entries(skin)) {
-    if (!/^[a-zA-Z][a-zA-Z0-9]{0,23}$/.test(key)) throw Error('Invalid skin property.');
-    if (value === null) { clean[key] = null; continue; }
-    if (typeof value !== 'string') throw Error('Skin properties must be text.');
-    if (/image|decal|livery/i.test(key) && value.startsWith('data:')) {
-      if (value.length > MAX_IMAGE_BYTES || !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]*={0,2}$/.test(value)) throw Error('Use a PNG, JPEG or WebP skin smaller than 192 KB.');
-    } else if (key==='rearText' ? value.length>80 || /[\u0000-\u0009\u000b-\u001f]/.test(value) || value.split('\n').length>2 : value.length>80 || /[\u0000-\u001f]/.test(value)) throw Error('Skin text is too long or contains invalid line breaks.');
-    clean[key] = value;
-  }
-  return {name,skin:clean};
-}
-function validState(input) {
-  if (!input || typeof input !== 'object') throw Error('Invalid bus position.');
-  const result = {};
-  for (const key of ['x','z','yaw','speed']) {
-    if (typeof input[key] !== 'number' || !Number.isFinite(input[key]) || Math.abs(input[key]) > 1e7) throw Error('Invalid bus position.');
-    result[key] = input[key];
-  }
-  result.y = Number.isFinite(input.y) && Math.abs(input.y) < 1e7 ? input.y : 0;
-  return {...result,...collisionMotion(input)};
-}
-
-export function createBusServer({dist = path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist')} = {}) {
+export function createBusServer({dist = path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist'),joinTimeoutMs=JOIN_TIMEOUT_MS} = {}) {
   const rooms = new Map();
   const root = path.resolve(dist);
   const server = http.createServer(async (req,res) => {
@@ -50,7 +24,18 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
     if (req.url?.split('?')[0] === '/health') {res.writeHead(200,{...headers,'Content-Type':'application/json'});res.end(JSON.stringify({ok:true,rooms:rooms.size}));return;}
     if (req.method !== 'GET' && req.method !== 'HEAD') {res.writeHead(405,headers);res.end();return;}
     try {
-      let pathname = decodeURIComponent(new URL(req.url,'http://localhost').pathname);
+    const requestUrl=new URL(req.url,'http://localhost');
+    if(requestUrl.pathname==='/skin') {
+      const room=rooms.get((requestUrl.searchParams.get('room')||'').toUpperCase());
+      const player=room?.players.get(requestUrl.searchParams.get('player'));
+      const field=requestUrl.searchParams.get('field')||'',revision=requestUrl.searchParams.get('revision')||'';
+      const asset=profileImage(player,field,revision);
+      if(!asset){res.writeHead(404,{...headers,'Cache-Control':'no-store'});res.end('Skin not found');return;}
+      const etag=`"${player.id}-${revision}-${field}"`,assetHeaders={...headers,'Content-Type':asset.contentType,'Cache-Control':'public, max-age=31536000, immutable','Access-Control-Allow-Origin':'*','ETag':etag};
+      if(req.headers['if-none-match']===etag){res.writeHead(304,assetHeaders);res.end();return;}
+      res.writeHead(200,{...assetHeaders,'Content-Length':asset.bytes.length});res.end(req.method==='HEAD'?undefined:asset.bytes);return;
+    }
+      let pathname = decodeURIComponent(requestUrl.pathname);
       if (pathname.includes('\0') || pathname.includes('\\') || pathname.split('/').some(p=>p.startsWith('.'))) {res.writeHead(404,headers);res.end();return;}
       let target = path.resolve(root,'.' + pathname);
       if (target !== root && !target.startsWith(root + path.sep)) {res.writeHead(404,headers);res.end();return;}
@@ -75,23 +60,25 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
     wss.handleUpgrade(req,socket,head,ws=>wss.emit('connection',ws,req));
   });
   function send(ws,message) {if (ws.readyState===WebSocket.OPEN && ws.bufferedAmount < MAX_PAYLOAD * 4) ws.send(typeof message==='string'?message:JSON.stringify(message));}
-  function playerData(player) {return {id:player.id,name:player.name,skin:player.skin,...player.state};}
-  function publishRoom(room) {
+  function playerData(player) {return {id:player.id,...publicProfile(player,player.id,player.ws.room),...player.state};}
+  function publishRoom(room,recipient) {
     const players = [...room.players.values()].map(playerData);
-    for (const p of room.players.values()) send(p.ws,{type:'room',code:room.code,selfId:p.id,players});
+    for (const p of room.players.values()) if(!recipient||recipient===p.ws)send(p.ws,{type:'room',code:room.code,selfId:p.id,players,time:Date.now()});
   }
+  function broadcast(room,message,except){for(const p of room.players.values())if(p.ws!==except)send(p.ws,message);}
   function leave(ws) {
     if (!ws.room) return;
     const room = rooms.get(ws.room);
     room?.players.delete(ws.id);ws.room=null;
     if (room && !room.players.size) rooms.delete(room.code);
-    else if (room) publishRoom(room);
+    else if (room) broadcast(room,{type:'left',playerId:ws.id,time:Date.now()});
   }
   wss.on('connection',ws=> {
     ws.id=randomUUID();ws.room=null;ws.alive=true;ws.windowStart=Date.now();ws.messages=0;ws.profileAt=0;
+    ws.joinTimer=setTimeout(()=>{if(!ws.room)ws.close(1008,'Join timed out');},joinTimeoutMs);
     ws.on('pong',()=>ws.alive=true);
     ws.on('error',()=>{});
-    ws.on('close',()=>leave(ws));
+    ws.on('close',()=>{clearTimeout(ws.joinTimer);leave(ws);});
     send(ws,{type:'connected',id:ws.id});
     ws.on('message',data=> {
       const now=Date.now();
@@ -101,7 +88,7 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
         const msg=JSON.parse(data.toString());
         if (!msg || typeof msg.type!=='string') throw Error('Invalid message.');
         if (msg.type==='ping') {send(ws,{type:'pong',time:now});return;}
-        if (msg.type==='leave') {leave(ws);send(ws,{type:'left'});return;}
+        if (msg.type==='leave') {leave(ws);send(ws,{type:'left'});ws.close(1000,'Left convoy');return;}
         if (msg.type==='create' || msg.type==='join') {
           const profile=validProfile(msg.profile ?? {name:msg.name,skin:msg.skin});
           let room;
@@ -113,20 +100,23 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
             if (typeof msg.code!=='string' || !/^[A-Z0-9]{6}$/.test(msg.code.toUpperCase())) throw Error('Enter a six-character room code.');
             room=rooms.get(msg.code.toUpperCase());
             if (!room) throw Error('Room not found. Ask your friend to create a convoy.');
-            if (room.players.size>=ROOM_SIZE && !room.players.has(ws.id)) throw Error('This convoy is full (8 drivers).');
+            if (room.players.size>=ROOM_CAPACITY && !room.players.has(ws.id)) throw Error(`This convoy is full (${ROOM_CAPACITY} drivers).`);
           }
           leave(ws);ws.room=room.code;
-          room.players.set(ws.id,{id:ws.id,ws,...profile,state:spawnState([...room.players.values()])});
+          ws.profileRevision=(ws.profileRevision||0)+1;
+          const player={id:ws.id,ws,...profile,profileRevision:ws.profileRevision,state:initialRoomState(spawnState([...room.players.values()]),now)};
+          room.players.set(ws.id,player);clearTimeout(ws.joinTimer);
           // Reinsert when the same connection rejoins its otherwise empty room.
-          rooms.set(room.code,room);publishRoom(room);return;
+          rooms.set(room.code,room);publishRoom(room,ws);broadcast(room,{type:'player',player:playerData(player),time:now},ws);return;
         }
         const room=rooms.get(ws.room);const player=room?.players.get(ws.id);
         if (!player) throw Error('Join a convoy first.');
         if (msg.type==='state') {
-          const input=msg.state??msg,incoming=validState(input);
-          const impact=input.impact?validState(input.impact):null;
-          const changed=updateCollisionStates([...room.players.values()],ws.id,incoming,impact);
-          for(const p of changed)send(p.ws,{type:'collision',state:p.state});
+          const input=msg.state??msg;
+          let changed;
+          try{changed=updateRoomMotion([...room.players.values()],ws.id,input,now);}
+          catch(error){recoverRoomMotion(player,now);send(ws,{type:'collision',state:player.state,time:now});throw error;}
+          for(const p of changed)send(p.ws,{type:'collision',state:p.state,time:now});
           return;
         }
         if (msg.type==='sound') {
@@ -138,7 +128,8 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
         }
         if (msg.type==='profile') {
           if (now-ws.profileAt<300) throw Error('Please wait before updating your skin again.');
-          Object.assign(player,validProfile(msg.profile ?? {name:msg.name,skin:msg.skin}));ws.profileAt=now;publishRoom(room);return;
+          Object.assign(player,validProfile(msg.profile ?? {name:msg.name,skin:msg.skin}));player.profileRevision++;ws.profileRevision=player.profileRevision;ws.profileAt=now;
+          broadcast(room,{type:'profile',player:{id:player.id,...publicProfile(player,player.id,room.code)},time:now});return;
         }
         throw Error('Unknown message.');
       } catch(error) {send(ws,{type:'error',message:error.message || 'Invalid message.'});}

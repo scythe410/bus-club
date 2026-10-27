@@ -18,7 +18,7 @@
 - Pick up passengers at bus stops.
 - Add Sinhala or English destination signs and rear panel messages.
 - Choose daylight, sunset or night.
-- Play solo or join a private multiplayer convoy with up to 8 buses.
+- Play solo or join a private multiplayer convoy with up to 5 buses.
 - Use keyboard controls on desktop or touch controls on mobile.
 - Play free in a modern browser with WebGL support. JavaScript is required.
 

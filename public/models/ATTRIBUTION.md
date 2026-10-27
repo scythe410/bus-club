@@ -31,3 +31,11 @@ tribal scrollwork and floral mural replaces the initial simple painted curves.
 Both buses add independent rear passenger door geometry and UV cutouts. These
 are runtime adaptations of the same credited GLB. See
 `review/dam-rajina-mural.md` for the generation prompt, references and assumptions.
+
+Nil Kirilli photo-reference update (26 October 2026): generated pale-woman/tribal
+side mural, the same portrait projected across separate grille slats, generated
+Sinhala vinyl window decals, marbled nose and rear panels, open rear stairwell,
+folded door leaves, blue bumper, silver window rails and revised rear ladder.
+These remain runtime adaptations of the credited original unchanged GLB.
+Prompts, saved asset paths and approximation limits are in
+`review/nil-kirilli-replica.md`.

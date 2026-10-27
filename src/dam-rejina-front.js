@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Small front fittings remain separate from the shell's shared donor texture.
 export function createDamRejinaFrontDetails() {
@@ -33,5 +34,27 @@ export function createDamRejinaFrontDetails() {
     const lamp=add(new THREE.CircleGeometry(.023,12),lens,x,2.66,4.631);
     lamp.name='Dam Rejina visor round marker lens';
   }
+  // The fittings never move relative to the shell. Keep the transformed
+  // quadrant positions while reducing 37 little meshes to five material draws.
+  group.updateMatrixWorld(true);
+  const batches=new Map(), originals=[];
+  group.traverse(mesh=>{
+    if(!mesh.isMesh)return;
+    originals.push(mesh.geometry);
+    const geometry=mesh.geometry.index?mesh.geometry.toNonIndexed():mesh.geometry.clone();
+    geometry.applyMatrix4(mesh.matrixWorld);
+    if(!batches.has(mesh.material))batches.set(mesh.material,[]);
+    batches.get(mesh.material).push(geometry);
+  });
+  group.clear();
+  for(const [material,geometries] of batches){
+    const geometry=mergeGeometries(geometries,false);
+    if(!geometry)throw Error('Could not batch front marker lamps');
+    geometries.forEach(part=>part.dispose());
+    const mesh=new THREE.Mesh(geometry,material);
+    mesh.name='Dam Rejina batched front fittings';
+    group.add(mesh);
+  }
+  originals.forEach(geometry=>geometry.dispose());
   return group;
 }

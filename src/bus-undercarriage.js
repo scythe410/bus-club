@@ -8,7 +8,7 @@ const DEFAULT_WHEELS = [
   [.936,.491,-2.228,.418,.213],[.704,.496,-2.223,.421,.220],
   [-.777,.512,-2.215,.443,.213],[-.524,.512,-2.211,.446,.234],
 ];
-export function createBusUndercarriage(source) {
+export function createBusUndercarriage(source,{openPassengerDoors=false}={}) {
   const group = new THREE.Group(); group.name = 'Bus chassis and wheel housings';
   const wheels=[];
   const inspect=mount=>{
@@ -48,8 +48,10 @@ export function createBusUndercarriage(source) {
   box('steel',.65,.045,7.8,center,.925,-.10);
   // Outboard floor sections stop before each wheel bay instead of sealing
   // the arches with a flat plate through the tires.
-  for(const side of [-1,1])for(const [z,length]of [[3.85,1.15],[.30,3.50],[-3.60,1.65]])
+  for(const side of [-1,1])for(const [z,length]of [[3.85,1.15],[.30,3.50],[-3.60,1.65]]){
+    if(openPassengerDoors&&side>0&&Math.abs(z)>3)continue;
     box('steel',.55,.045,length,center+side*.635,.975,z);
+  }
   box('steel',.40,.30,1.05,center-.65,.65,-.35);
   for(const z of [-.71,.01])box('mechanical',.42,.025,.055,center-.65,.49,z);
   // Gearbox and sump are attached between the frame rails.

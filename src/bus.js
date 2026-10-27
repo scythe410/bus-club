@@ -9,7 +9,8 @@ const box = (w,h,d,mat,x=0,y=0,z=0) => {const m=new THREE.Mesh(new THREE.BoxGeom
 const material=(color,extra={})=>new THREE.MeshStandardMaterial({color,roughness:.68,...extra});
 
 export class Bus {
-  constructor(skin={}) {
+  constructor(skin={}, {remote=false}={}) {
+    this.remote=remote;
     this.group=new THREE.Group();this.wheels=[];this.textures=[];this.skin={color:'#e4a44b',accent:'#f5eed9',pattern:'stripe',rearText:'',name:'COAST CLUB',destination:'THE LONG WAY HOME',...skin};
     this.bodyMaterial=material(this.skin.color);this.accentMaterial=material(this.skin.accent);
     const dark=material('#172e34'), glass=material('#264a52',{metalness:.25,roughness:.22}), chrome=material('#c3c6b9',{metalness:.6}), rubber=material('#1b282c');
@@ -58,7 +59,7 @@ export class Bus {
     this.requestedModelId=modelId;this.modelLoading=true;
     const version=this.modelVersion=(this.modelVersion||0)+1;
     try {
-      const model=await createModel(modelId);
+      const model=await createModel(modelId,{remote:this.remote});
       if(this.disposed||version!==this.modelVersion){this.disposeModel(model);return false;}
       // Retain editable signs and liveries while replacing the procedural shell.
       const retained=new Set([...this.sidePanels,this.destination,this.cockpit,this.rearPanel.mesh]);
@@ -80,11 +81,12 @@ export class Bus {
         }
       });
       for(const panel of this.sidePanels){
-        panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,.2);
+        panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,this.skin.image?.55:.2);
         panel.position.set(panel.position.x>0?1.035:-.944,1.37,.2);
       }
-      this.destination.geometry.dispose();this.destination.geometry=new THREE.PlaneGeometry(1.7,.24);
-      this.destination.position.set(.045,2.59,4.566);
+      this.panelImageMode=Boolean(this.skin.image);
+      this.destination.geometry.dispose();this.destination.geometry=new THREE.PlaneGeometry(modelId==='sltb'?1.2:1.7,modelId==='sltb'?.10:.24);
+      this.destination.position.set(.045,modelId==='sltb'?1.83:2.59,modelId==='sltb'?4.582:4.566);
       this.rearPanel.useImportedModel();
       this.setSkin(this.skin);
       if(this.cockpit){const spec=getBusModelSpec(modelId);this.cockpit.traverse(mesh=>{if(mesh.material?.userData.busCockpitTrim)mesh.material.color.set(spec.cockpit);});}
@@ -96,8 +98,16 @@ export class Bus {
   }
   disposeModel(root){
     const mats=new Set(),geoms=new Set(),textures=new Set();
-    root.traverse(o=>{if(o.geometry)geoms.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m){mats.add(m);if(!m.userData.sharedTextures)for(const value of Object.values(m))if(value?.isTexture)textures.add(value);}});
+    root.traverse(o=>{if(o.geometry&&!o.userData.sharedGeometry)geoms.add(o.geometry);for(const m of (Array.isArray(o.material)?o.material:[o.material]))if(m){mats.add(m);if(!m.userData.sharedTextures)for(const value of Object.values(m))if(value?.isTexture)textures.add(value);}});
     for(const t of textures)t.dispose();for(const m of mats)m.dispose();for(const g of geoms)g.dispose();
+  }
+  setSideTexture(texture){
+    const previous=new Set(this.sidePanels.map(panel=>panel.material.map).filter(Boolean));
+    for(const panel of this.sidePanels)if(panel.material.map!==texture){panel.material.map=texture;panel.material.needsUpdate=true;}
+    for(const old of previous)if(old!==texture){
+      old.dispose();
+      if(old===this.sideTexture){this.sideTexture=null;this.sideSignature=null;}
+    }
   }
   setSkin(next){
     Object.assign(this.skin,next);this.skin.modelId=normalizeBusModelId(this.skin.modelId);
@@ -110,35 +120,54 @@ export class Bus {
     for(const panel of this.sidePanels)panel.visible=Boolean(s.image);
     if(this.importedModel&&this.panelImageMode!==Boolean(s.image)){this.panelImageMode=Boolean(s.image);for(const panel of this.sidePanels){panel.geometry.dispose();panel.geometry=new THREE.PlaneGeometry(3.8,s.image?.55:.2);}}
     if(!this.importedModel){this.bodyMaterial.color.set(s.color);this.accentMaterial.color.set(s.accent);}
-    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=160;const c=canvas.getContext('2d');
-    c.fillStyle=s.color;c.fillRect(0,0,1024,160);c.fillStyle=s.accent;
-    if(s.pattern==='wave'){c.beginPath();c.moveTo(0,85);for(let x=0;x<=1024;x+=8)c.lineTo(x,85+Math.sin(x/130)*35);c.lineTo(1024,160);c.lineTo(0,160);c.fill();}
-    else if(s.pattern==='retro'||s.pattern==='sunset'){for(let i=0;i<3;i++){c.globalAlpha=1-i*.17;c.fillRect(0,85+i*22,1024,15);}c.globalAlpha=1;}
-    else if(s.pattern==='dots'){for(let x=20;x<1024;x+=50)for(let y=15;y<160;y+=45){c.beginPath();c.arc(x,y,8,0,Math.PI*2);c.fill();}}
-    else if(s.pattern!=='solid'){c.fillRect(0,105,1024,24);c.fillRect(0,143,1024,8);}
-    c.fillStyle=s.accent;c.font='bold 47px sans-serif';c.textAlign='center';c.fillText((s.name||'COAST CLUB').toUpperCase().slice(0,24),512,67);
-    const sideTexture=new THREE.CanvasTexture(canvas);sideTexture.colorSpace=THREE.SRGBColorSpace;
-    const previous=new Set(this.sidePanels.map(p=>p.material.map).filter(Boolean));
+    // Hidden panels need no fallback canvas; a pending upload shares one cached
+    // fallback, while unchanged/rear-only edits leave both GPU textures alone.
     const imageUnchanged=s.image&&s.image===this.loadedImage&&this.uploadedTexture;
-    const nextTexture=imageUnchanged?this.uploadedTexture:sideTexture;
-    for(const p of this.sidePanels){p.material.map=nextTexture;p.material.needsUpdate=true;}
-    if(imageUnchanged)sideTexture.dispose();
-    for(const tex of previous)if(tex!==nextTexture)tex.dispose();
-    if(!imageUnchanged)this.uploadedTexture=null;
-    const sign=document.createElement('canvas');sign.width=512;sign.height=88;const sc=sign.getContext('2d');sc.fillStyle='#182b2c';sc.fillRect(0,0,512,88);sc.fillStyle='#ffe6a9';sc.textAlign='center';sc.font='bold 30px monospace';sc.fillText((s.destination||'THE LONG WAY HOME').toUpperCase().slice(0,25),256,56);
-    if(this.destination.material.map)this.destination.material.map.dispose();this.destination.material.map=new THREE.CanvasTexture(sign);this.destination.material.map.colorSpace=THREE.SRGBColorSpace;this.destination.material.needsUpdate=true;
+    if(s.image&&!imageUnchanged){
+      const signature=JSON.stringify([s.color,s.accent,s.pattern,s.name]);
+      if(!this.sideTexture||signature!==this.sideSignature){
+        const canvas=this.sideTexture?.image||document.createElement('canvas');canvas.width=1024;canvas.height=160;const c=canvas.getContext('2d');
+        c.fillStyle=s.color;c.fillRect(0,0,1024,160);c.fillStyle=s.accent;
+        if(s.pattern==='wave'){c.beginPath();c.moveTo(0,85);for(let x=0;x<=1024;x+=8)c.lineTo(x,85+Math.sin(x/130)*35);c.lineTo(1024,160);c.lineTo(0,160);c.fill();}
+        else if(s.pattern==='retro'||s.pattern==='sunset'){for(let i=0;i<3;i++){c.globalAlpha=1-i*.17;c.fillRect(0,85+i*22,1024,15);}c.globalAlpha=1;}
+        else if(s.pattern==='dots'){for(let x=20;x<1024;x+=50)for(let y=15;y<160;y+=45){c.beginPath();c.arc(x,y,8,0,Math.PI*2);c.fill();}}
+        else if(s.pattern!=='solid'){c.fillRect(0,105,1024,24);c.fillRect(0,143,1024,8);}
+        c.fillStyle=s.accent;c.font='bold 47px sans-serif';c.textAlign='center';c.fillText((s.name||'COAST CLUB').toUpperCase().slice(0,24),512,67);
+        this.sideTexture??=new THREE.CanvasTexture(canvas);this.sideTexture.colorSpace=THREE.SRGBColorSpace;this.sideTexture.needsUpdate=true;this.sideSignature=signature;
+      }
+      this.setSideTexture(this.sideTexture);this.uploadedTexture=null;
+    }else if(!s.image){
+      this.setSideTexture(null);this.uploadedTexture=null;
+    }
+    const destination=(s.destination||'THE LONG WAY HOME').toUpperCase().slice(0,25);
+    if(destination!==this.destinationText||!this.destination.material.map){
+      const sign=this.destination.material.map?.image||document.createElement('canvas');sign.width=512;sign.height=88;const sc=sign.getContext('2d');sc.fillStyle='#182b2c';sc.fillRect(0,0,512,88);sc.fillStyle='#ffe6a9';sc.textAlign='center';sc.font='bold 30px monospace';sc.fillText(destination,256,56);
+      if(!this.destination.material.map){this.destination.material.map=new THREE.CanvasTexture(sign);this.destination.material.map.colorSpace=THREE.SRGBColorSpace;this.destination.material.needsUpdate=true;}
+      this.destination.material.map.needsUpdate=true;this.destinationText=destination;
+    }
     if(s.image&&!imageUnchanged){
       if(this.loadedImage!==s.image||!this.skinReady){
         this.loadedImage=s.image;const source=s.image;const version=(this.imageVersion||0)+1;this.imageVersion=version;
         this.skinReady=new Promise(resolve=>new THREE.TextureLoader().load(source,tex=>{
           if(this.disposed||this.loadedImage!==source||this.imageVersion!==version){tex.dispose();resolve(true);return;}
-          tex.colorSpace=THREE.SRGBColorSpace;this.uploadedTexture=tex;const old=new Set(this.sidePanels.map(p=>p.material.map));
-          for(const p of this.sidePanels){p.material.map=tex;p.material.needsUpdate=true;}for(const t of old)if(t)t.dispose();resolve(true);
-        },undefined,()=>{this.loadedImage=null;resolve(false);}));
+          tex.colorSpace=THREE.SRGBColorSpace;this.setSideTexture(tex);this.uploadedTexture=tex;resolve(true);
+        },undefined,()=>{
+          if(this.disposed||this.loadedImage!==source||this.imageVersion!==version){resolve(true);return;}
+          this.loadedImage=null;resolve(false);
+        }));
       }
     }
     if(!s.image){this.loadedImage=null;this.imageVersion=(this.imageVersion||0)+1;this.skinReady=Promise.resolve(true);}
 
+  }
+  setDistance(distance){
+    if(!this.remote||!this.importedModel)return;
+    // Hysteresis avoids details flickering when hovering around a threshold.
+    this.distant = this.distant ? distance > 60 : distance > 75;
+    for(const child of this.importedModel.children){
+      if(child.userData.peerDetail)child.visible=!this.distant;
+      if(child.userData.peerShadow)child.visible=distance<90;
+    }
   }
   animate(speed,dt,wheelAngle=0){animateBusWheels(this.wheels,speed,dt,wheelAngle);for(const mat of this.headlights||[])mat.emissiveIntensity=this.lampMaterial.emissiveIntensity;}
   dispose(){this.disposed=true;this.rearPanel.dispose();this.disposeModel(this.group);this.bodyMaterial.dispose();this.lampMaterial.dispose();}
