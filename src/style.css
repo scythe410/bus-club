@@ -271,3 +271,25 @@ input[type=text],select{font-size:14px;line-height:1.4}
   .section-heading{font-size:13px}
   .garage-title{font-size:32px}
 }
+
+@font-face{font-family:'Garage Sinhala';src:url('./assets/noto-sans-sinhala-regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+/* Compact garage: two title lines, one row of buses, quieter supporting copy. */
+.garage-title{font-size:29px;font-weight:500;line-height:1.15;letter-spacing:-.045em;margin:0 0 25px;text-wrap:initial}
+.garage-title span{display:block;white-space:nowrap}
+.bus-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.bus-choice{width:100%;min-width:0}
+.bus-choice img{width:100%;height:auto;aspect-ratio:88/50;object-fit:cover}
+.bus-choice span{font-size:10px;font-weight:400;white-space:nowrap}
+.model-credit{font-size:8px;font-weight:300;line-height:1.55;color:var(--text-tertiary);margin-top:13px}
+.model-credit a{font-weight:300}
+.ui-footer{gap:12px}
+.quality-select{appearance:none;-webkit-appearance:none;width:132px;max-width:48%;flex:0 1 132px;padding:8px 27px 8px 9px;font-size:11px;letter-spacing:0;line-height:1.5;border:1px solid var(--line);border-radius:6px;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23c0c8bd' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center}
+.game-about summary{font-size:10px;font-weight:400;min-height:36px}
+.game-about-copy h2{font-size:12px;font-weight:400;line-height:1.5;margin:8px 0}
+.game-about-copy p{font-size:10px;font-weight:400;line-height:1.7;margin:8px 0}
+.game-about-copy [lang=si]{font-family:'Garage Sinhala','Sinhala MN',system-ui,sans-serif;font-size:10px;font-weight:400;line-height:1.8;font-synthesis:none}
+@media(max-width:380px){.garage-title{font-size:27px}.bus-choice span{font-size:9px}}
+
+/* Driving instructions occupy the former route card, above the action buttons. */
+.drive-hud .controls-legend{position:static;text-align:left;font-size:10px;line-height:1.9;color:#e0e6db;text-shadow:0 1px 8px #102419;padding-left:10px;border-left:2px solid var(--lime)}
+@media(max-width:700px),(pointer:coarse){.drive-hud .controls-legend{display:none}}

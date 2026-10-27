@@ -7,7 +7,10 @@ import {validProfile} from './shared/profile.js';
 import {MAX_IMAGE_BYTES} from './shared/skin-image.js';
 export {MAX_IMAGE_BYTES} from './shared/skin-image.js';
 import http from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { byteRange } from './shared/http-range.js';
+import { radioPath } from './worker/radio.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -36,6 +39,10 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
       res.writeHead(200,{...assetHeaders,'Content-Length':asset.bytes.length});res.end(req.method==='HEAD'?undefined:asset.bytes);return;
     }
       let pathname = decodeURIComponent(requestUrl.pathname);
+      if (pathname.startsWith('/radio/')) {
+        if (!radioPath.test(pathname)) {res.writeHead(404,headers);res.end('Track not found');return;}
+        pathname=pathname.replace('/radio/','/assets/');
+      }
       if (pathname.includes('\0') || pathname.includes('\\') || pathname.split('/').some(p=>p.startsWith('.'))) {res.writeHead(404,headers);res.end();return;}
       let target = path.resolve(root,'.' + pathname);
       if (target !== root && !target.startsWith(root + path.sep)) {res.writeHead(404,headers);res.end();return;}
@@ -44,14 +51,16 @@ export function createBusServer({dist = path.join(path.dirname(fileURLToPath(imp
       const info = await stat(target);
       const etag = `W/"${info.size.toString(16)}-${info.mtimeMs.toString(16)}"`;
       const fingerprinted = path.relative(root,target).split(path.sep)[0] === 'assets';
-      const assetHeaders = {...headers,'Content-Type':MIME[path.extname(target)] || 'application/octet-stream','Cache-Control':fingerprinted?'public, max-age=31536000, immutable':'no-cache','ETag':etag};
+      const assetHeaders = {...headers,'Content-Type':MIME[path.extname(target)] || 'application/octet-stream','Cache-Control':fingerprinted?'public, max-age=31536000, immutable':'no-cache','ETag':etag,'Accept-Ranges':'bytes'};
       if (req.headers['if-none-match']?.split(',').some(value=>value.trim()==='*'||value.trim().replace(/^W\//,'')===etag.replace(/^W\//,''))) {
         res.writeHead(304,assetHeaders);res.end();return;
       }
       if (req.method === 'HEAD') {res.writeHead(200,{...assetHeaders,'Content-Length':info.size});res.end();return;}
-      const body = await readFile(target);
-      res.writeHead(200,{...assetHeaders,'Content-Length':body.length});
-      res.end(body);
+      const range = req.headers['if-range'] ? null : byteRange(req.headers.range, info.size);
+      if (range === false) {res.writeHead(416,{...assetHeaders,'Content-Range':`bytes */${info.size}`,'Content-Length':0});res.end();return;}
+      res.writeHead(range ? 206 : 200,{...assetHeaders,'Content-Length':range?.length ?? info.size,...(range?{'Content-Range':`bytes ${range.start}-${range.end}/${info.size}`}:{})});
+      const stream=createReadStream(target,range?{start:range.start,end:range.end}:{});
+      stream.on('error',()=>res.destroy());res.on('close',()=>stream.destroy());stream.pipe(res);
     } catch {res.writeHead(404,headers);res.end('Not found');}
   });
   const wss = new WebSocketServer({noServer:true,maxPayload:MAX_PAYLOAD,perMessageDeflate:false});

@@ -12,7 +12,8 @@
     "run_worker_first": [
       "/ws",
       "/skin",
-      "/health"
+      "/health",
+      "/radio/*"
     ]
   },
   "durable_objects": {

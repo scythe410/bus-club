@@ -10,7 +10,7 @@ No Slow Roads code, assets, or extracted data is included.
 
 ## Play
 
-Open the game, set your bus signs, and select **Let's take a drive**. Use **Invite friends**
+Open the game, set your bus signs, and select **Paarata Daamu**. Use **Invite friends**
 to create a room. Send **Copy invite link** to friends; the link joins the same convoy.
 Everyone then starts their own bus. Friends spawn side by side near the current convoy,
 including when the first driver has already left the starting area.
@@ -30,6 +30,32 @@ Mac Three Finger Drag also orbits when enabled in Accessibility → Pointer Cont
 Touch controls appear on phones. Graphics quality can be reduced in the garage.
 The bus engine starts when you click Drive, with idle, acceleration and gear changes.
 Use the sound button to mute; your sound preference is remembered.
+
+The top-right **Radio** button opens a compact player for the supplied **All Right
+nonstop** and **Jothi nonstop / Thushara Jo · Sahara Flash** mixes. Click a mix to
+play it; use play/pause, the time scrubber, or click/drag the volume bar (including
+straight to its midpoint). The selected mix and volume are remembered; playback
+starts only after a click. The playlist advances and repeats automatically.
+Radio volume is independent of bus/engine sounds. Escape dismisses the radio
+before acting on the garage, and native keyboard controls work on both sliders.
+During playback, a small spectrum replaces the old scenic caption, with the
+track name scrolling underneath. Its 32 bars read the actual audio frequencies
+after the volume control; animation stops on pause, in background tabs, and when
+hidden on small screens. Reduced-motion preferences keep the display static.
+Driving instructions sit above the bottom-left action buttons. The spectrum and
+full track title sit at the bottom right; radio choices retain their short names.
+Independent frequency bands, adaptive contrast and faster attack/release make
+the spectrum respond to musical changes rather than staying high on sustained bass.
+
+Audio is hosted with the existing Cloudflare deployment. R2 is not enabled on the
+account and is unnecessary for these two files, each below the static asset size
+limit. Vite fingerprints the MP3s separately; neither file is requested at startup.
+`/radio/<fingerprinted-name>.mp3` streams the cached Assets source with HTTP byte
+ranges, correct `206`/`416`, content length, ETags, and immutable browser caching.
+The Worker slices streams with backpressure rather than buffering the full file.
+`shared/radio-catalog.js` records byte sizes (Assets HEAD may omit Content-Length);
+tests verify them against the originals. The Node preview server also supports
+byte ranges. If the library grows, this route can use R2 without changing the UI.
 
 The garage’s **Rear panel message** supports Sinhala and English, including mixed text
 on two lines (up to 80 characters). Messages are saved and shared with your convoy.
